@@ -2,7 +2,7 @@
   "type": "module",
   "license": "Apache-2.0",
   "name": "@sovereignbase/storage",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Encrypted cache-first object storage for modern browsers.",
   "keywords": [
     "cache-api",

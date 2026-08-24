@@ -46,12 +46,16 @@
       "playwright.config.ts"
     ]
   },
-  "dependencies": {},
+  "dependencies": {
+    "@msgpack/msgpack": "^3.1.3"
+  },
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/ui": "^4.1.10",
     "edge-runtime": "^4.0.1",
     "fast-glob": "^3.3.3",
     "husky": "^9.1.7",
@@ -60,9 +64,7 @@
     "tsdown": "^0.22.14",
     "typedoc": "^0.28.20",
     "typescript": "^5.9.3",
-    "wrangler": "4.125.0",
-    "@vitest/coverage-v8": "^4.1.10",
-    "@vitest/ui": "^4.1.10"
+    "wrangler": "4.125.0"
   },
   "repository": {
     "type": "git",

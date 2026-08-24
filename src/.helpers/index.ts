@@ -1,7 +1,11 @@
+/** Cache namespace shared by all objects managed by this package. @internal */
 export const CACHE_NAME = '@sovereignbase/storage/objects'
+
+/** Header carrying the absolute cache-retention deadline. @internal */
 export const CACHE_FOR_HEADER = 'x-cache-for'
 import { decode, encode } from '@msgpack/msgpack'
 
+/** Stores a response with refreshed retention metadata. @internal */
 export async function cacheObject(
   cache: Cache,
   request: Request,
@@ -24,6 +28,7 @@ export async function cacheObject(
   return retained
 }
 
+/** Decrypts, decompresses, and decodes a stored object. @internal */
 export async function decodeObject(
   bytes: ArrayBuffer,
   cipherKeyBytes: Uint8Array
@@ -58,6 +63,8 @@ export async function decodeObject(
 
   return decode(new Uint8Array(decompressed))
 }
+
+/** Encodes, compresses, and encrypts an object for storage. @internal */
 export async function encodeObject(
   object: unknown,
   cipherKeyBytes: Uint8Array

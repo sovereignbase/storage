@@ -5,6 +5,19 @@ export const CACHE_NAME = '@sovereignbase/storage/objects'
 export const CACHE_FOR_HEADER = 'x-cache-for'
 import { decode, encode } from '@msgpack/msgpack'
 
+/** Constructs a canonical public HTTPS object URL. @internal */
+export function parseObjectUrl(id: string, host: string): URL | undefined {
+  try {
+    const url = new URL(host + id)
+
+    if (url.href !== `https://${url.host}/${id}`) return
+
+    return url
+  } catch {
+    return
+  }
+}
+
 /** Stores a response with refreshed retention metadata. @internal */
 export async function cacheObject(
   cache: Cache,

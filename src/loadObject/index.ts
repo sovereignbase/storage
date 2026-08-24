@@ -1,4 +1,9 @@
-import { CACHE_NAME, cacheObject, decodeObject } from '../.helpers/index.js'
+import {
+  CACHE_NAME,
+  cacheObject,
+  decodeObject,
+  parseObjectUrl,
+} from '../.helpers/index.js'
 
 /**
  * Loads, decrypts, and decodes an object from a cache-first public URL.
@@ -58,20 +63,8 @@ export async function loadObject(
   cipherKeyBytes: Uint8Array,
   onObjectLoaded: (object: unknown) => void
 ): Promise<void> {
-  let url: URL
-
-  try {
-    url = new URL(host + id)
-    url.protocol === 'https:' &&
-      url.hostname.length > 0 &&
-      url.username === '' &&
-      url.password === '' &&
-      url.pathname === `/${id}` &&
-      url.search === '' &&
-      url.hash === ''
-  } catch {
-    return
-  }
+  const url = parseObjectUrl(id, host)
+  if (!url) return
 
   const cache = await caches.open(CACHE_NAME)
 
@@ -86,6 +79,6 @@ export async function loadObject(
   const retained = await cacheObject(cache, request, response, cacheFor)
 
   void onObjectLoaded(
-    decodeObject(await retained.arrayBuffer(), cipherKeyBytes)
+    await decodeObject(await retained.arrayBuffer(), cipherKeyBytes)
   )
 }

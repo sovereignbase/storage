@@ -1,7 +1,7 @@
 {
   "type": "module",
   "license": "Apache-2.0",
-  "name": "@sovereignbase/package-name",
+  "name": "@sovereignbase/storage",
   "version": "0.0.0",
   "description": "",
   "keywords": [
@@ -28,8 +28,8 @@
   "sideEffects": false,
   "scripts": {
     "format": "prettier . --write",
-    "build": "tsup",
-    "test": "npm run build && node test/run-coverage.mjs && node test/e2e/run.mjs",
+    "build": "tsdown",
+    "test": "npm run build && vitest run --coverage",
     "bench": "npm run build && node benchmark/bench.js",
     "prepare": "husky",
     "prepublishOnly": "npm run test && npm run bench"
@@ -68,10 +68,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sovereignbase/package-name.git"
+    "url": "git+https://github.com/sovereignbase/storage.git"
   },
   "bugs": {
-    "url": "https://github.com/sovereignbase/package-name/issues"
+    "url": "https://github.com/sovereignbase/storage/issues"
   },
-  "homepage": "https://sovereignbase.dev/package-name"
+  "homepage": "https://sovereignbase.dev/storage"
 }

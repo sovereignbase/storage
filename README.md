@@ -1,11 +1,12 @@
-[![npm version](https://img.shields.io/npm/v/@sovereignbase/package-name)](https://www.npmjs.com/package/@sovereignbase/package-name)
-[![CI](https://github.com/sovereignbase/package-name/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/sovereignbase/package-name/actions/workflows/ci.yaml)
-[![codecov](https://codecov.io/gh/sovereignbase/package-name/branch/master/graph/badge.svg)](https://codecov.io/gh/sovereignbase/package-name)
-[![license](https://img.shields.io/npm/l/@sovereignbase/package-name)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/@sovereignbase/storage)](https://www.npmjs.com/package/@sovereignbase/storage)
+[![JSR](https://jsr.io/badges/@sovereignbase/storage)](https://jsr.io/@sovereignbase/storage)
+[![CI](https://github.com/sovereignbase/storage/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/sovereignbase/storage/actions/workflows/ci.yaml)
+[![codecov](https://codecov.io/gh/sovereignbase/storage/branch/master/graph/badge.svg)](https://codecov.io/gh/sovereignbase/storage)
+[![license](https://img.shields.io/npm/l/@sovereignbase/storage)](LICENSE)
 
 1. Title
 
-# package-name
+# storage
 
 2. Description
 

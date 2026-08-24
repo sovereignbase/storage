@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  CACHE_FOR_HEADER,
   cacheObject,
   decodeObject,
   encodeObject,
@@ -18,7 +17,7 @@ describe('storage helpers', () => {
     expect(parseObjectUrl('object', 'not a URL/')).toBeUndefined()
   })
 
-  it('retains the response body and metadata with a refreshed deadline', async () => {
+  it('retains the response with refreshed standard cache headers', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1_000)
     let stored: Response | undefined
     const cache = {
@@ -34,9 +33,13 @@ describe('storage helpers', () => {
       new Response('body', {
         status: 202,
         statusText: 'Accepted',
-        headers: { 'x-source': 'unit' },
+        headers: {
+          age: '30',
+          pragma: 'no-cache',
+          'x-source': 'unit',
+        },
       }),
-      500
+      60_000
     )
 
     expect(cache.put).toHaveBeenCalledOnce()
@@ -46,7 +49,13 @@ describe('storage helpers', () => {
     expect(retained.status).toBe(202)
     expect(retained.statusText).toBe('Accepted')
     expect(retained.headers.get('x-source')).toBe('unit')
-    expect(retained.headers.get(CACHE_FOR_HEADER)).toBe('1500')
+    expect(retained.headers.get('cache-control')).toBe(
+      'public, max-age=60, must-revalidate'
+    )
+    expect(retained.headers.get('date')).toBe(new Date(1_000).toUTCString())
+    expect(retained.headers.get('expires')).toBe(new Date(61_000).toUTCString())
+    expect(retained.headers.has('age')).toBe(false)
+    expect(retained.headers.has('pragma')).toBe(false)
   })
 
   it('round-trips supported objects through compression and encryption', async () => {

@@ -33,7 +33,9 @@
   "scripts": {
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "build": "tsdown",
+    "build": "npm run build:package && npm run build:docs",
+    "build:package": "tsdown",
+    "build:docs": "typedoc",
     "test": "npm run build && npm run typecheck && npm run test:vitest && npm run test:e2e",
     "typecheck": "tsc --noEmit --project test/tsconfig.json",
     "test:vitest": "vitest run --coverage",

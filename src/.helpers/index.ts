@@ -1,8 +1,5 @@
 /** Cache namespace shared by all objects managed by this package. @internal */
 export const CACHE_NAME = '@sovereignbase/storage/objects'
-
-/** Header carrying the absolute cache-retention deadline. @internal */
-export const CACHE_FOR_HEADER = 'x-cache-for'
 import { decode, encode } from '@msgpack/msgpack'
 
 /** Constructs a canonical public HTTPS object URL. @internal */
@@ -18,7 +15,7 @@ export function parseObjectUrl(id: string, host: string): URL | undefined {
   }
 }
 
-/** Stores a response with refreshed retention metadata. @internal */
+/** Stores a response with refreshed standard HTTP cache metadata. @internal */
 export async function cacheObject(
   cache: Cache,
   request: Request,
@@ -27,8 +24,14 @@ export async function cacheObject(
 ): Promise<Response> {
   const body = await response.arrayBuffer()
 
+  const cachedAt = Date.now()
+  const maxAge = Math.max(0, Math.floor(cacheFor / 1000))
   const headers = new Headers(response.headers)
-  headers.set(CACHE_FOR_HEADER, String(Date.now() + cacheFor))
+  headers.set('cache-control', `public, max-age=${maxAge}, must-revalidate`)
+  headers.set('date', new Date(cachedAt).toUTCString())
+  headers.set('expires', new Date(cachedAt + maxAge * 1000).toUTCString())
+  headers.delete('age')
+  headers.delete('pragma')
 
   const retained = new Response(body, {
     status: response.status,

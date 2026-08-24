@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadObject, storeObject } from '../../src/index.js'
 
-const CACHE_FOR_HEADER = 'x-cache-for'
 const CACHE_NAME = '@sovereignbase/storage/objects'
 const HOST = 'https://objects.example/'
 const ID = 'object'
@@ -47,7 +46,7 @@ describe('public storage API', () => {
     const object = { title: 'Cached', values: [1, true, null] }
     let stored: Uint8Array<ArrayBuffer> | undefined
 
-    await storeObject(ID, HOST, 500, KEY, object, (bytes) => {
+    await storeObject(ID, HOST, 60_000, KEY, object, (bytes) => {
       stored = bytes
     })
 
@@ -57,23 +56,27 @@ describe('public storage API', () => {
     expect(cache.puts[0].response.headers.get('content-type')).toBe(
       'application/octet-stream'
     )
-    expect(cache.puts[0].response.headers.get(CACHE_FOR_HEADER)).toBe('1500')
+    expect(cache.puts[0].response.headers.get('cache-control')).toBe(
+      'public, max-age=60, must-revalidate'
+    )
 
     cache.puts.length = 0
     let loaded: unknown
-    await loadObject(ID, HOST, 500, KEY, (object) => {
+    await loadObject(ID, HOST, 60_000, KEY, (object) => {
       loaded = object
     })
 
     expect(loaded).toEqual(object)
     expect(fetchMock).not.toHaveBeenCalled()
     expect(cache.puts).toHaveLength(1)
-    expect(cache.puts[0].response.headers.get(CACHE_FOR_HEADER)).toBe('1500')
+    expect(cache.puts[0].response.headers.get('cache-control')).toBe(
+      'public, max-age=60, must-revalidate'
+    )
   })
 
   it('loads a cache miss from the network and retains response metadata', async () => {
     let encoded: Uint8Array<ArrayBuffer> | undefined
-    await storeObject(ID, HOST, 500, KEY, 'network object', (bytes) => {
+    await storeObject(ID, HOST, 60_000, KEY, 'network object', (bytes) => {
       encoded = bytes
     })
 
@@ -87,7 +90,7 @@ describe('public storage API', () => {
     )
 
     let loaded: unknown
-    await loadObject(ID, HOST, 250, KEY, (object) => {
+    await loadObject(ID, HOST, 30_000, KEY, (object) => {
       loaded = object
     })
 
@@ -97,14 +100,16 @@ describe('public storage API', () => {
     expect(cache.puts[0].response.status).toBe(206)
     expect(cache.puts[0].response.statusText).toBe('Partial Content')
     expect(cache.puts[0].response.headers.get('x-source')).toBe('network')
-    expect(cache.puts[0].response.headers.get(CACHE_FOR_HEADER)).toBe('1250')
+    expect(cache.puts[0].response.headers.get('cache-control')).toBe(
+      'public, max-age=30, must-revalidate'
+    )
   })
 
   it('does not cache or call back for a non-successful response', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 404 }))
     const onLoaded = vi.fn()
 
-    await loadObject(ID, HOST, 500, KEY, onLoaded)
+    await loadObject(ID, HOST, 60_000, KEY, onLoaded)
 
     expect(onLoaded).not.toHaveBeenCalled()
     expect(cache.puts).toHaveLength(0)
@@ -116,8 +121,8 @@ describe('public storage API', () => {
       const onStored = vi.fn()
       const onLoaded = vi.fn()
 
-      await storeObject(ID, host, 500, KEY, 'value', onStored)
-      await loadObject(ID, host, 500, KEY, onLoaded)
+      await storeObject(ID, host, 60_000, KEY, 'value', onStored)
+      await loadObject(ID, host, 60_000, KEY, onLoaded)
 
       expect(onStored).not.toHaveBeenCalled()
       expect(onLoaded).not.toHaveBeenCalled()
@@ -130,20 +135,20 @@ describe('public storage API', () => {
     const pending = new Promise<void>(() => undefined)
 
     await expect(
-      storeObject(ID, HOST, 500, KEY, 'value', () => pending)
+      storeObject(ID, HOST, 60_000, KEY, 'value', () => pending)
     ).resolves.toBeUndefined()
     await expect(
-      loadObject(ID, HOST, 500, KEY, () => pending)
+      loadObject(ID, HOST, 60_000, KEY, () => pending)
     ).resolves.toBeUndefined()
 
     const failure = new Error('callback failed')
     await expect(
-      storeObject(ID, HOST, 500, KEY, 'value', () => {
+      storeObject(ID, HOST, 60_000, KEY, 'value', () => {
         throw failure
       })
     ).rejects.toBe(failure)
     await expect(
-      loadObject(ID, HOST, 500, KEY, () => {
+      loadObject(ID, HOST, 60_000, KEY, () => {
         throw failure
       })
     ).rejects.toBe(failure)

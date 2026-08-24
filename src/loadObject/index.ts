@@ -12,9 +12,10 @@ import {
  * fetched from `host + id`; the hosting server therefore needs to make the
  * exact URL publicly readable and, for cross-origin consumers, return an
  * `Access-Control-Allow-Origin` header that permits them (typically `*`). A
- * successful response is written back to the cache and its retention metadata
- * is refreshed to `cacheFor` milliseconds from the time of access. Cache hits
- * receive the same refresh, giving frequently used objects sliding retention.
+ * successful response is written back with standard HTTP cache headers whose
+ * freshness is refreshed to `cacheFor` milliseconds from the time of access.
+ * Cache hits receive the same refresh, giving frequently used objects sliding
+ * freshness.
  *
  * The callback is invoked after successful decryption and decoding. Its return
  * value is ignored. A DOM consumer can intentionally start a load without
@@ -30,8 +31,8 @@ import {
  * fragment.
  * @param host - HTTPS origin prefix ending in `/`, for example
  * `https://objects.example/`.
- * @param cacheFor - Sliding cache-retention duration in milliseconds. Each
- * successful use records a new deadline relative to the current time.
+ * @param cacheFor - Sliding cache freshness in milliseconds. Each successful
+ * use refreshes `Cache-Control`, `Date`, and `Expires`.
  * @param cipherKeyBytes - Raw AES-GCM key bytes used to decrypt the object.
  * The key must be valid for the Web Crypto API (16, 24, or 32 bytes).
  * @param onObjectLoaded - Called once with the decoded object after a successful
@@ -75,7 +76,7 @@ export async function loadObject(
   if (!response) response = await fetch(request)
   if (!response.ok) return
 
-  // Network reads also always refresh retention.
+  // Network reads also always refresh cache freshness.
   const retained = await cacheObject(cache, request, response, cacheFor)
 
   void onObjectLoaded(

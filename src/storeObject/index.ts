@@ -26,8 +26,8 @@ import {
  * fragment.
  * @param host - HTTPS origin prefix ending in `/`, for example
  * `https://objects.example/`.
- * @param cacheFor - Cache-retention duration in milliseconds, recorded as a
- * deadline relative to the time the object is stored.
+ * @param cacheFor - Cache freshness in milliseconds, expressed through
+ * standard `Cache-Control`, `Date`, and `Expires` response headers.
  * @param cipherKeyBytes - Raw AES-GCM key bytes used to encrypt the object. The
  * key must be valid for the Web Crypto API (16, 24, or 32 bytes).
  * @param object - Any value supported by the MessagePack encoder.

@@ -112,7 +112,7 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
       const { storeObject } = (await import(moduleUrl)) as typeof Storage
       const key = Uint8Array.from({ length: 32 }, (_, index) => index)
 
-      await storeObject(
+      void storeObject(
         id,
         host,
         60_000,
@@ -158,14 +158,22 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
   await expect(page.locator('#app')).toHaveText('Hydrated')
   expect(reads).toBe(1)
 
-  const deadline = await page.evaluate(
+  const cacheHeaders = await page.evaluate(
     async ({ cacheName, url }) => {
       const cache = await caches.open(cacheName)
-      return (await cache.match(url))?.headers.get('x-cache-for')
+      const response = await cache.match(url)
+      return {
+        cacheControl: response?.headers.get('cache-control'),
+        date: response?.headers.get('date'),
+        expires: response?.headers.get('expires'),
+      }
     },
     { cacheName: CACHE_NAME, url: `${HOST}${ID}` }
   )
-  expect(Number(deadline)).toBeGreaterThan(Date.now())
+  expect(cacheHeaders.cacheControl).toBe('public, max-age=60, must-revalidate')
+  expect(Date.parse(cacheHeaders.expires ?? '')).toBeGreaterThan(
+    Date.parse(cacheHeaders.date ?? '')
+  )
 
   await page.evaluate(
     async ({ host, id }) => {

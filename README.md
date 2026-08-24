@@ -84,7 +84,7 @@ server or cloud persistence. The callback return value is not awaited.
 ### `loadObject(...)`
 
 Loads encrypted bytes from the cache first and `host + id` second, refreshes the
-`cacheFor` deadline, decrypts and decodes the object, then calls
+standard cache headers for `cacheFor`, decrypts and decodes the object, then calls
 `onObjectLoaded`. It can be fired without `await` so the DOM can be constructed
 before callback hydration.
 
@@ -98,9 +98,9 @@ before callback hydration.
 - Cross-origin reads must allow the browser origin, typically with
   `Access-Control-Allow-Origin: *`.
 - Cache hits take precedence over the network. Every successful use refreshes
-  the internal `x-cache-for` deadline.
-- The Cache API does not expire custom deadlines automatically; this package
-  does not run an eviction scheduler.
+  `Cache-Control`, `Date`, and `Expires`.
+- Cached responses are `public`, use `max-age` and `must-revalidate`, and remain
+  in the browser's default best-effort storage pool.
 - Invalid URLs and unsuccessful HTTP responses complete without a load
   callback. Other runtime failures reject the returned promise.
 

@@ -1,0 +1,105 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>@sovereignbase/storage</title><link rel="icon" href="https://sovereignbase.dev/sovereignbase_logo.png"/><meta name="description" content="Documentation for @sovereignbase/storage"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="index.html" class="title">@sovereignbase/storage</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<h1>@sovereignbase/storage</h1></div>
+<div class="tsd-panel tsd-typography"><p><a href="https://www.npmjs.com/package/@sovereignbase/storage"><img src="https://img.shields.io/npm/v/@sovereignbase/storage" alt="npm version"></a>
+<a href="https://jsr.io/@sovereignbase/storage"><img src="https://jsr.io/badges/@sovereignbase/storage" alt="JSR"></a>
+<a href="https://github.com/sovereignbase/storage/actions/workflows/ci.yaml"><img src="https://github.com/sovereignbase/storage/actions/workflows/ci.yaml/badge.svg?branch=master" alt="CI"></a>
+<a href="https://codecov.io/gh/sovereignbase/storage"><img src="https://codecov.io/gh/sovereignbase/storage/branch/master/graph/badge.svg" alt="codecov"></a>
+<a href="LICENSE"><img src="https://img.shields.io/npm/l/@sovereignbase/storage" alt="license"></a></p>
+<h1 id="storage" class="tsd-anchor-link">storage<a href="#storage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
+<p>Encrypted, cache-first object storage for browsers. Objects are cached locally
+while the application owns persistence to a public cross-origin URL.</p>
+<h2 id="installation" class="tsd-anchor-link">Installation<a href="#installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="sh"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">@sovereignbase/storage</span><br/><span class="hl-3"># or</span><br/><span class="hl-0">pnpm</span><span class="hl-1"> </span><span class="hl-2">add</span><span class="hl-1"> </span><span class="hl-2">@sovereignbase/storage</span><br/><span class="hl-3"># or</span><br/><span class="hl-0">yarn</span><span class="hl-1"> </span><span class="hl-2">add</span><span class="hl-1"> </span><span class="hl-2">@sovereignbase/storage</span><br/><span class="hl-3"># or</span><br/><span class="hl-0">bun</span><span class="hl-1"> </span><span class="hl-2">add</span><span class="hl-1"> </span><span class="hl-2">@sovereignbase/storage</span><br/><span class="hl-3"># or</span><br/><span class="hl-0">deno</span><span class="hl-1"> </span><span class="hl-2">add</span><span class="hl-1"> </span><span class="hl-2">jsr:@sovereignbase/storage</span><br/><span class="hl-3"># or</span><br/><span class="hl-0">vlt</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">jsr:@sovereignbase/storage</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="usage" class="tsd-anchor-link">Usage<a href="#usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h3 id="store" class="tsd-anchor-link">Store<a href="#store" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<pre><code class="js"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">storeObject</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/storage&#39;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">id</span><span class="hl-1"> = </span><span class="hl-2">&#39;profile&#39;</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">host</span><span class="hl-1"> = </span><span class="hl-2">&#39;https://objects.example/&#39;</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">cacheFor</span><span class="hl-1"> = </span><span class="hl-8">15</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">1000</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">cipherKeyBytes</span><span class="hl-1"> = </span><span class="hl-5">crypto</span><span class="hl-1">.</span><span class="hl-0">getRandomValues</span><span class="hl-1">(</span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Uint8Array</span><span class="hl-1">(</span><span class="hl-8">32</span><span class="hl-1">))</span><br/><br/><span class="hl-6">void</span><span class="hl-1"> </span><span class="hl-0">storeObject</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-5">id</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">host</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">cacheFor</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">cipherKeyBytes</span><span class="hl-1">,</span><br/><span class="hl-1">  { </span><span class="hl-5">name:</span><span class="hl-1"> </span><span class="hl-2">&#39;Ada&#39;</span><span class="hl-1"> },</span><br/><span class="hl-1">  (</span><span class="hl-5">bytes</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-6">void</span><span class="hl-1"> </span><span class="hl-0">fetch</span><span class="hl-1">(</span><span class="hl-2">`/api/objects/</span><span class="hl-6">${</span><span class="hl-5">id</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">, {</span><br/><span class="hl-1">      </span><span class="hl-5">method:</span><span class="hl-1"> </span><span class="hl-2">&#39;PUT&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-5">headers:</span><span class="hl-1"> { </span><span class="hl-2">&#39;content-type&#39;</span><span class="hl-5">:</span><span class="hl-1"> </span><span class="hl-2">&#39;application/octet-stream&#39;</span><span class="hl-1"> },</span><br/><span class="hl-1">      </span><span class="hl-5">body:</span><span class="hl-1"> </span><span class="hl-5">bytes</span><span class="hl-1">,</span><br/><span class="hl-1">    })</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The callback persists the bytes so they become publicly readable from
+<code>host + id</code>.</p>
+<h3 id="load-and-hydrate" class="tsd-anchor-link">Load and hydrate<a href="#load-and-hydrate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<pre><code class="js"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">loadObject</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/storage&#39;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">article</span><span class="hl-1"> = </span><span class="hl-5">document</span><span class="hl-1">.</span><span class="hl-0">createElement</span><span class="hl-1">(</span><span class="hl-2">&#39;article&#39;</span><span class="hl-1">)</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">output</span><span class="hl-1"> = </span><span class="hl-5">document</span><span class="hl-1">.</span><span class="hl-0">createElement</span><span class="hl-1">(</span><span class="hl-2">&#39;output&#39;</span><span class="hl-1">)</span><br/><span class="hl-5">output</span><span class="hl-1">.</span><span class="hl-5">textContent</span><span class="hl-1"> = </span><span class="hl-2">&#39;Loading…&#39;</span><br/><br/><span class="hl-6">void</span><span class="hl-1"> </span><span class="hl-0">loadObject</span><span class="hl-1">(</span><span class="hl-5">id</span><span class="hl-1">, </span><span class="hl-5">host</span><span class="hl-1">, </span><span class="hl-5">cacheFor</span><span class="hl-1">, </span><span class="hl-5">cipherKeyBytes</span><span class="hl-1">, (</span><span class="hl-5">object</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">output</span><span class="hl-1">.</span><span class="hl-5">textContent</span><span class="hl-1"> = </span><span class="hl-5">object</span><span class="hl-1">.</span><span class="hl-5">name</span><br/><span class="hl-1">})</span><br/><br/><span class="hl-5">article</span><span class="hl-1">.</span><span class="hl-0">append</span><span class="hl-1">(</span><span class="hl-5">output</span><span class="hl-1">)</span><br/><span class="hl-5">document</span><span class="hl-1">.</span><span class="hl-5">body</span><span class="hl-1">.</span><span class="hl-0">append</span><span class="hl-1">(</span><span class="hl-5">article</span><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="api" class="tsd-anchor-link">API<a href="#api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h3 id="_" class="tsd-anchor-link"><code>storeObject(...)</code><a href="#_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>MessagePack-encodes, gzip-compresses, AES-GCM-encrypts, and caches an object.
+After caching, <code>onObjectStored</code> receives the opaque bytes for application-owned
+server or cloud persistence. The callback return value is not awaited.</p>
+<h3 id="_-1" class="tsd-anchor-link"><code>loadObject(...)</code><a href="#_-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Loads encrypted bytes from the cache first and <code>host + id</code> second, refreshes the
+standard cache headers for <code>cacheFor</code>, decrypts and decodes the object, then calls
+<code>onObjectLoaded</code>. It can be fired without <code>await</code> so the DOM can be constructed
+before callback hydration.</p>
+<h2 id="behavior" class="tsd-anchor-link">Behavior<a href="#behavior" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li>Browser-only ESM.</li>
+<li>Requires Cache API, Fetch, Web Crypto, <code>Blob</code>, <code>CompressionStream</code>, and
+<code>DecompressionStream</code>.</li>
+<li>Uses external <code>@msgpack/msgpack</code>; dependencies are not bundled.</li>
+<li>The object URL must be public HTTPS without credentials, query, or fragment.</li>
+<li>Cross-origin reads must allow the browser origin, typically with
+<code>Access-Control-Allow-Origin: *</code>.</li>
+<li>Cache hits take precedence over the network. Every successful use refreshes
+<code>Cache-Control</code>, <code>Date</code>, and <code>Expires</code>.</li>
+<li>Cached responses are <code>public</code>, use <code>max-age</code> and <code>must-revalidate</code>, and remain
+in the browser's default best-effort storage pool.</li>
+<li>Invalid URLs and unsuccessful HTTP responses complete without a load
+callback. Other runtime failures reject the returned promise.</li>
+</ul>
+<h2 id="tests" class="tsd-anchor-link">Tests<a href="#tests" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ul>
+<li>Unit and integration tests in Vitest with TypeScript.</li>
+<li>Browser E2E tests in Playwright with TypeScript.</li>
+<li>Browser matrix: Chromium, Firefox, WebKit.</li>
+<li>Coverage: 100% statements, branches, functions, and lines.</li>
+</ul>
+<h2 id="license" class="tsd-anchor-link">License<a href="#license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>Apache-2.0</p>
+</div></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details"><a href="#storage"><span>storage</span></a>
+<ul>
+<li><a href="#installation"><span>Installation</span></a></li>
+<li><a href="#usage"><span>Usage</span></a></li>
+<li>
+<ul>
+<li><a href="#store"><span>Store</span></a></li>
+<li><a href="#load-and-hydrate"><span>Load and hydrate</span></a></li></ul></li>
+<li><a href="#api"><span>API</span></a></li>
+<li>
+<ul>
+<li><a href="#_"><span></span></a></li>
+<li><a href="#_-1"><span></span></a></li></ul></li>
+<li><a href="#behavior"><span>Behavior</span></a></li>
+<li><a href="#tests"><span>Tests</span></a></li>
+<li><a href="#license"><span>License</span></a></li></ul></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="modules.html">@sovereignbase/storage</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

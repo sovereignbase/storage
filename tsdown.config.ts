@@ -24,14 +24,22 @@ export default defineConfig({
   outDir: 'dist',
   platform: 'neutral',
   target: 'es2024',
+  inputOptions: {
+    resolve: {
+      mainFields: ['browser', 'module', 'main'],
+    },
+  },
   dts: true,
   sourcemap: true,
   clean: true,
   banner: {
     js: `${apache2Banner}\n`,
   },
-  external: [],
-  outExtension({ format }) {
+  deps: {
+    alwaysBundle: ['@msgpack/msgpack'],
+    onlyBundle: false,
+  },
+  outExtensions({ format }) {
     return { js: format === 'cjs' ? '.cjs' : '.js' }
   },
 })

@@ -37,26 +37,22 @@ import {
  * @returns A promise that settles after local caching and callback invocation.
  * It does not imply that callback-managed remote persistence has completed.
  *
- * @example Cache locally and hand the encrypted bytes to a persistence endpoint.
+ * @example Fire-and-forget local storage and hand the encrypted bytes to a persistence endpoint.
  * ```ts
- * let persistence: Promise<Response> | undefined
- *
- * await storeObject(
+ * void storeObject(
  *   'welcome',
  *   'https://objects.example/',
  *   15 * 60 * 1000,
  *   key,
  *   { title: 'Hello' },
  *   (bytes) => {
- *     persistence = fetch('https://objects.example/welcome', {
+ *     void fetch('/api/objects/welcome', {
  *       method: 'PUT',
  *       headers: { 'content-type': 'application/octet-stream' },
  *       body: bytes,
  *     })
  *   }
  * )
- *
- * await persistence
  * ```
  */
 export async function storeObject(

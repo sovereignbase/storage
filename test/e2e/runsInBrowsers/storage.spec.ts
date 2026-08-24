@@ -1,13 +1,20 @@
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
-import { resolve } from 'node:path'
+import { resolve, sep } from 'node:path'
 import type * as Storage from '../../../src/index.js'
 
 const CACHE_NAME = '@sovereignbase/storage/objects'
 const HOST = 'https://objects.example/'
 const ID = 'browser-object'
 const bundlePath = resolve(process.cwd(), 'dist', 'index.js')
+const msgpackRoot = resolve(
+  process.cwd(),
+  'node_modules',
+  '@msgpack',
+  'msgpack'
+)
+const msgpackPrefix = '/node_modules/@msgpack/msgpack/'
 let server: Server
 let testOrigin: string
 
@@ -19,8 +26,28 @@ test.beforeAll(async () => {
       return
     }
 
+    if (request.url?.startsWith(msgpackPrefix)) {
+      const dependencyPath = resolve(
+        msgpackRoot,
+        request.url.slice(msgpackPrefix.length)
+      )
+      if (!dependencyPath.startsWith(msgpackRoot + sep)) {
+        response.statusCode = 400
+        response.end('Bad request')
+        return
+      }
+      response.setHeader('content-type', 'text/javascript')
+      response.end(await readFile(dependencyPath))
+      return
+    }
+
     response.setHeader('content-type', 'text/html')
-    response.end('<main id="app">Ready</main>')
+    response.end(`
+      <script type="importmap">
+        {"imports":{"@msgpack/msgpack":"${msgpackPrefix}dist.esm/index.mjs"}}
+      </script>
+      <main id="app">Ready</main>
+    `)
   })
 
   await new Promise<void>((resolveListening, reject) => {

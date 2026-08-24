@@ -20,26 +20,15 @@ const apache2Banner = [
 
 export default defineConfig({
   entry: ['src/index.ts'],
-  format: ['esm', 'cjs'],
+  format: ['esm'],
   outDir: 'dist',
-  platform: 'neutral',
+  platform: 'browser',
   target: 'es2024',
-  inputOptions: {
-    resolve: {
-      mainFields: ['browser', 'module', 'main'],
-    },
-  },
   dts: true,
   sourcemap: true,
   clean: true,
   banner: {
     js: `${apache2Banner}\n`,
   },
-  deps: {
-    alwaysBundle: ['@msgpack/msgpack'],
-    onlyBundle: false,
-  },
-  outExtensions({ format }) {
-    return { js: format === 'cjs' ? '.cjs' : '.js' }
-  },
+  deps: { neverBundle: true },
 })

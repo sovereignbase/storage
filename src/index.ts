@@ -1,5 +1,5 @@
 /**
- * Encrypted, cache-first object storage for DOM and Worker environments.
+ * Encrypted, cache-first object storage for browser DOM environments.
  *
  * Objects are encoded with MessagePack, compressed with gzip, and encrypted
  * with AES-GCM before they leave the caller. The package keeps encrypted

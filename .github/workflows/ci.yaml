@@ -116,7 +116,7 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run build
+      - run: npm run build:package
 
       - name: Sync JSR version from package.json
         run: |
@@ -132,4 +132,6 @@ jobs:
           git push
 
       - run: npm publish --access public --ignore-scripts
-      - run: npx jsr publish
+
+      - name: Publish to JSR
+        run: npx jsr publish

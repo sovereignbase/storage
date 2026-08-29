@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/sovereignbase/storage/compare/v1.0.2...v2.0.0) (2026-08-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* migrate encryption to cryptosuite
+
+### Features
+
+* migrate encryption to cryptosuite ([8b75f7d](https://github.com/sovereignbase/storage/commit/8b75f7da03e8870a4ae2943ec819740a339d0cb4))
+
 ## [1.0.2](https://github.com/sovereignbase/storage/compare/v1.0.1...v1.0.2) (2026-08-25)
 
 

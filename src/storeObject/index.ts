@@ -5,8 +5,11 @@ import {
   parseObjectUrl,
 } from '../.helpers/index.js'
 
+import type { CipherKey } from '@sovereignbase/cryptosuite'
+
 /**
- * Encrypts an object and stores its encoded representation in the Cache API.
+ * Encrypts an object through cryptosuite and stores its encoded representation
+ * in the Cache API.
  *
  * This function provides local caching, not durable remote persistence. After
  * encoding, compression, encryption, and caching succeed, `onObjectStored` is
@@ -28,8 +31,9 @@ import {
  * `https://objects.example/`.
  * @param cacheFor - Cache freshness in milliseconds, expressed through
  * standard `Cache-Control`, `Date`, and `Expires` response headers.
- * @param cipherKeyBytes - Raw AES-GCM key bytes used to encrypt the object. The
- * key must be valid for the Web Crypto API (16, 24, or 32 bytes).
+ * @param cipherKey - Cryptosuite `CipherKey` JWK used to encrypt the object.
+ * Generate or derive it with `Cryptographic.cipherMessage`, keep it secret, and
+ * reuse the same key when loading the object.
  * @param object - Any value supported by the MessagePack encoder.
  * @param onObjectStored - Called once with the compressed, encrypted, and
  * MessagePack-wrapped bytes after they have been cached. The callback owns
@@ -39,11 +43,16 @@ import {
  *
  * @example Fire-and-forget local storage and hand the encrypted bytes to a persistence endpoint.
  * ```ts
+ * import { Cryptographic } from '@sovereignbase/cryptosuite'
+ * import { storeObject } from '@sovereignbase/storage'
+ *
+ * const cipherKey = await Cryptographic.cipherMessage.generateKey()
+ *
  * void storeObject(
  *   'welcome',
  *   'https://objects.example/',
  *   15 * 60 * 1000,
- *   key,
+ *   cipherKey,
  *   { title: 'Hello' },
  *   (bytes) => {
  *     void fetch('/api/objects/welcome', {
@@ -59,14 +68,14 @@ export async function storeObject(
   id: string,
   host: string,
   cacheFor: number,
-  cipherKeyBytes: Uint8Array,
+  cipherKey: CipherKey,
   object: unknown,
   onObjectStored: (object: Uint8Array<ArrayBuffer>) => void
 ): Promise<void> {
   const url = parseObjectUrl(id, host)
   if (!url) return
 
-  const encoded = await encodeObject(object, cipherKeyBytes)
+  const encoded = await encodeObject(object, cipherKey)
 
   const cache = await caches.open(CACHE_NAME)
   const request = new Request(url)

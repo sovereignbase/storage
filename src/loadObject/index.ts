@@ -5,8 +5,10 @@ import {
   parseObjectUrl,
 } from '../.helpers/index.js'
 
+import type { CipherKey } from '@sovereignbase/cryptosuite'
+
 /**
- * Loads, decrypts, and decodes an object from a cache-first public URL.
+ * Loads and cryptosuite-decrypts an object from a cache-first public URL.
  *
  * The Cache API is checked before the network. On a cache miss, the object is
  * fetched from `host + id`; the hosting server therefore needs to make the
@@ -33,8 +35,8 @@ import {
  * `https://objects.example/`.
  * @param cacheFor - Sliding cache freshness in milliseconds. Each successful
  * use refreshes `Cache-Control`, `Date`, and `Expires`.
- * @param cipherKeyBytes - Raw AES-GCM key bytes used to decrypt the object.
- * The key must be valid for the Web Crypto API (16, 24, or 32 bytes).
+ * @param cipherKey - Cryptosuite `CipherKey` JWK originally used to encrypt the
+ * object. A different key cannot decrypt the stored bytes.
  * @param onObjectLoaded - Called once with the decoded object after a successful
  * load. The callback's return value is not awaited.
  * @returns A promise that settles after the load and callback invocation have
@@ -42,6 +44,11 @@ import {
  *
  * @example Hydrate an element without blocking construction of the rest of the DOM.
  * ```ts
+ * import { loadObject } from '@sovereignbase/storage'
+ * import type { CipherKey } from '@sovereignbase/cryptosuite'
+ *
+ * declare const cipherKey: CipherKey
+ *
  * const article = document.createElement('article')
  * article.textContent = 'Loading…'
  * document.body.append(article)
@@ -50,7 +57,7 @@ import {
  *   'welcome',
  *   'https://objects.example/',
  *   15 * 60 * 1000,
- *   key,
+ *   cipherKey,
  *   (object) => {
  *     article.textContent = String(object)
  *   }
@@ -61,7 +68,7 @@ export async function loadObject(
   id: string,
   host: string,
   cacheFor: number,
-  cipherKeyBytes: Uint8Array,
+  cipherKey: CipherKey,
   onObjectLoaded: (object: unknown) => void
 ): Promise<void> {
   const url = parseObjectUrl(id, host)
@@ -80,6 +87,6 @@ export async function loadObject(
   const retained = await cacheObject(cache, request, response, cacheFor)
 
   void onObjectLoaded(
-    await decodeObject(await retained.arrayBuffer(), cipherKeyBytes)
+    await decodeObject(await retained.arrayBuffer(), cipherKey)
   )
 }

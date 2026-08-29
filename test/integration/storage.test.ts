@@ -1,10 +1,11 @@
+import { Cryptographic, type CipherKey } from '@sovereignbase/cryptosuite'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadObject, storeObject } from '../../src/index.js'
 
 const CACHE_NAME = '@sovereignbase/storage/objects'
 const HOST = 'https://objects.example/'
 const ID = 'object'
-const KEY = Uint8Array.from({ length: 32 }, (_, index) => index)
+let key: CipherKey
 
 class MemoryCache {
   readonly entries = new Map<string, Response>()
@@ -23,7 +24,8 @@ class MemoryCache {
 let cache: MemoryCache
 let fetchMock: ReturnType<typeof vi.fn>
 
-beforeEach(() => {
+beforeEach(async () => {
+  key = await Cryptographic.cipherMessage.generateKey()
   cache = new MemoryCache()
   fetchMock = vi.fn()
   vi.stubGlobal('caches', {
@@ -46,7 +48,7 @@ describe('public storage API', () => {
     const object = { title: 'Cached', values: [1, true, null] }
     let stored: Uint8Array<ArrayBuffer> | undefined
 
-    await storeObject(ID, HOST, 60_000, KEY, object, (bytes) => {
+    await storeObject(ID, HOST, 60_000, key, object, (bytes) => {
       stored = bytes
     })
 
@@ -62,7 +64,7 @@ describe('public storage API', () => {
 
     cache.puts.length = 0
     let loaded: unknown
-    await loadObject(ID, HOST, 60_000, KEY, (object) => {
+    await loadObject(ID, HOST, 60_000, key, (object) => {
       loaded = object
     })
 
@@ -76,7 +78,7 @@ describe('public storage API', () => {
 
   it('loads a cache miss from the network and retains response metadata', async () => {
     let encoded: Uint8Array<ArrayBuffer> | undefined
-    await storeObject(ID, HOST, 60_000, KEY, 'network object', (bytes) => {
+    await storeObject(ID, HOST, 60_000, key, 'network object', (bytes) => {
       encoded = bytes
     })
 
@@ -90,7 +92,7 @@ describe('public storage API', () => {
     )
 
     let loaded: unknown
-    await loadObject(ID, HOST, 30_000, KEY, (object) => {
+    await loadObject(ID, HOST, 30_000, key, (object) => {
       loaded = object
     })
 
@@ -109,7 +111,7 @@ describe('public storage API', () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 404 }))
     const onLoaded = vi.fn()
 
-    await loadObject(ID, HOST, 60_000, KEY, onLoaded)
+    await loadObject(ID, HOST, 60_000, key, onLoaded)
 
     expect(onLoaded).not.toHaveBeenCalled()
     expect(cache.puts).toHaveLength(0)
@@ -121,8 +123,8 @@ describe('public storage API', () => {
       const onStored = vi.fn()
       const onLoaded = vi.fn()
 
-      await storeObject(ID, host, 60_000, KEY, 'value', onStored)
-      await loadObject(ID, host, 60_000, KEY, onLoaded)
+      await storeObject(ID, host, 60_000, key, 'value', onStored)
+      await loadObject(ID, host, 60_000, key, onLoaded)
 
       expect(onStored).not.toHaveBeenCalled()
       expect(onLoaded).not.toHaveBeenCalled()
@@ -135,20 +137,20 @@ describe('public storage API', () => {
     const pending = new Promise<void>(() => undefined)
 
     await expect(
-      storeObject(ID, HOST, 60_000, KEY, 'value', () => pending)
+      storeObject(ID, HOST, 60_000, key, 'value', () => pending)
     ).resolves.toBeUndefined()
     await expect(
-      loadObject(ID, HOST, 60_000, KEY, () => pending)
+      loadObject(ID, HOST, 60_000, key, () => pending)
     ).resolves.toBeUndefined()
 
     const failure = new Error('callback failed')
     await expect(
-      storeObject(ID, HOST, 60_000, KEY, 'value', () => {
+      storeObject(ID, HOST, 60_000, key, 'value', () => {
         throw failure
       })
     ).rejects.toBe(failure)
     await expect(
-      loadObject(ID, HOST, 60_000, KEY, () => {
+      loadObject(ID, HOST, 60_000, key, () => {
         throw failure
       })
     ).rejects.toBe(failure)

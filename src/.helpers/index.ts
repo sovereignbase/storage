@@ -1,6 +1,11 @@
 /** Cache namespace shared by all objects managed by this package. @internal */
 export const CACHE_NAME = '@sovereignbase/storage/objects'
 import { decode, encode } from '@msgpack/msgpack'
+import {
+  Cryptographic,
+  type CipherKey,
+  type CipherMessage,
+} from '@sovereignbase/cryptosuite'
 
 /** Constructs a canonical public HTTPS object URL. @internal */
 export function parseObjectUrl(id: string, host: string): URL | undefined {
@@ -44,34 +49,19 @@ export async function cacheObject(
   return retained
 }
 
-/** Decrypts, decompresses, and decodes a stored object. @internal */
+/** Decrypts a cryptosuite cipher message, decompresses it, and decodes its MessagePack object. @internal */
 export async function decodeObject(
   bytes: ArrayBuffer,
-  cipherKeyBytes: Uint8Array
+  cipherKey: CipherKey
 ): Promise<unknown> {
-  const { iv, ciphertext } = decode(new Uint8Array(bytes)) as {
-    iv: BufferSource
-    ciphertext: BufferSource
-  }
+  const cipherMessage = decode(new Uint8Array(bytes)) as CipherMessage
 
-  const key = await crypto.subtle.importKey(
-    'raw',
-    cipherKeyBytes as BufferSource,
-    'AES-GCM',
-    false,
-    ['decrypt']
+  const compressed = await Cryptographic.cipherMessage.decrypt(
+    cipherKey,
+    cipherMessage
   )
 
-  const compressed = await crypto.subtle.decrypt(
-    {
-      name: 'AES-GCM',
-      iv,
-    },
-    key,
-    ciphertext
-  )
-
-  const stream = new Blob([compressed])
+  const stream = new Blob([compressed as BufferSource])
     .stream()
     .pipeThrough(new DecompressionStream('gzip'))
 
@@ -80,10 +70,10 @@ export async function decodeObject(
   return decode(new Uint8Array(decompressed))
 }
 
-/** Encodes, compresses, and encrypts an object for storage. @internal */
+/** MessagePack-encodes an object, compresses it, and encrypts it through cryptosuite. @internal */
 export async function encodeObject(
   object: unknown,
-  cipherKeyBytes: Uint8Array
+  cipherKey: CipherKey
 ): Promise<Uint8Array<ArrayBuffer>> {
   const encoded = encode(object)
 
@@ -91,29 +81,12 @@ export async function encodeObject(
     .stream()
     .pipeThrough(new CompressionStream('gzip'))
 
-  const compressed = await new Response(stream).arrayBuffer()
+  const compressed = new Uint8Array(await new Response(stream).arrayBuffer())
 
-  const key = await crypto.subtle.importKey(
-    'raw',
-    cipherKeyBytes as BufferSource,
-    'AES-GCM',
-    false,
-    ['encrypt']
-  )
-
-  const iv = crypto.getRandomValues(new Uint8Array(12))
-
-  const ciphertext = await crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv,
-    },
-    key,
+  const cipherMessage = await Cryptographic.cipherMessage.encrypt(
+    cipherKey,
     compressed
   )
 
-  return encode({
-    iv,
-    ciphertext: new Uint8Array(ciphertext),
-  })
+  return encode(cipherMessage)
 }

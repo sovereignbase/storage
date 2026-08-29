@@ -2,23 +2,21 @@ import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
 import { resolve, sep } from 'node:path'
+import { Cryptographic, type CipherKey } from '@sovereignbase/cryptosuite'
 import type * as Storage from '../../../src/index.js'
 
 const CACHE_NAME = '@sovereignbase/storage/objects'
 const HOST = 'https://objects.example/'
 const ID = 'browser-object'
 const bundlePath = resolve(process.cwd(), 'dist', 'index.js')
-const msgpackRoot = resolve(
-  process.cwd(),
-  'node_modules',
-  '@msgpack',
-  'msgpack'
-)
-const msgpackPrefix = '/node_modules/@msgpack/msgpack/'
+const nodeModulesRoot = resolve(process.cwd(), 'node_modules')
+const nodeModulesPrefix = '/node_modules/'
 let server: Server
 let testOrigin: string
+let key: CipherKey
 
 test.beforeAll(async () => {
+  key = await Cryptographic.cipherMessage.generateKey()
   server = createServer(async (request, response) => {
     if (request.url === '/dist/index.js') {
       response.setHeader('content-type', 'text/javascript')
@@ -26,12 +24,12 @@ test.beforeAll(async () => {
       return
     }
 
-    if (request.url?.startsWith(msgpackPrefix)) {
+    if (request.url?.startsWith(nodeModulesPrefix)) {
       const dependencyPath = resolve(
-        msgpackRoot,
-        request.url.slice(msgpackPrefix.length)
+        nodeModulesRoot,
+        request.url.slice(nodeModulesPrefix.length)
       )
-      if (!dependencyPath.startsWith(msgpackRoot + sep)) {
+      if (!dependencyPath.startsWith(nodeModulesRoot + sep)) {
         response.statusCode = 400
         response.end('Bad request')
         return
@@ -44,7 +42,15 @@ test.beforeAll(async () => {
     response.setHeader('content-type', 'text/html')
     response.end(`
       <script type="importmap">
-        {"imports":{"@msgpack/msgpack":"${msgpackPrefix}dist.esm/index.mjs"}}
+        {"imports":{
+          "@msgpack/msgpack":"${nodeModulesPrefix}@msgpack/msgpack/dist.esm/index.mjs",
+          "@sovereignbase/cryptosuite":"${nodeModulesPrefix}@sovereignbase/cryptosuite/dist/index.js",
+          "@sovereignbase/bytecodec":"${nodeModulesPrefix}@sovereignbase/bytecodec/dist/index.js",
+          "@noble/ciphers/":"${nodeModulesPrefix}@noble/ciphers/",
+          "@noble/curves/":"${nodeModulesPrefix}@noble/curves/",
+          "@noble/hashes/":"${nodeModulesPrefix}@noble/hashes/",
+          "@noble/post-quantum/":"${nodeModulesPrefix}@noble/post-quantum/"
+        }}
       </script>
       <main id="app">Ready</main>
     `)
@@ -107,16 +113,15 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
 
   await page.goto(testOrigin)
   await page.evaluate(
-    async ({ host, id }) => {
+    async ({ host, id, cipherKey }) => {
       const moduleUrl = '/dist/index.js'
       const { storeObject } = (await import(moduleUrl)) as typeof Storage
-      const key = Uint8Array.from({ length: 32 }, (_, index) => index)
 
       void storeObject(
         id,
         host,
         60_000,
-        key,
+        cipherKey,
         { title: 'Hydrated' },
         (bytes) => {
           void fetch(host + id, {
@@ -127,14 +132,14 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
         }
       )
     },
-    { host: HOST, id: ID }
+    { host: HOST, id: ID, cipherKey: key }
   )
 
   await expect.poll(() => persisted?.byteLength ?? 0).toBeGreaterThan(0)
 
   await page.evaluate(async (cacheName) => caches.delete(cacheName), CACHE_NAME)
   await page.evaluate(
-    ({ host, id }) => {
+    ({ host, id, cipherKey }) => {
       const app = document.querySelector<HTMLElement>('#app')
       if (!app) throw new Error('Missing app element')
 
@@ -143,14 +148,13 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
 
       const moduleUrl = '/dist/index.js'
       void import(moduleUrl).then(({ loadObject }) => {
-        const key = Uint8Array.from({ length: 32 }, (_, index) => index)
-        void loadObject(id, host, 60_000, key, (object: unknown) => {
+        void loadObject(id, host, 60_000, cipherKey, (object: unknown) => {
           app.textContent = (object as { title: string }).title
           app.dataset.hydrated = 'true'
         })
       })
     },
-    { host: HOST, id: ID }
+    { host: HOST, id: ID, cipherKey: key }
   )
 
   await expect(page.locator('#app')).toHaveAttribute('data-shell', 'ready')
@@ -176,13 +180,12 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
   )
 
   await page.evaluate(
-    async ({ host, id }) => {
+    async ({ host, id, cipherKey }) => {
       const moduleUrl = '/dist/index.js'
       const { loadObject } = (await import(moduleUrl)) as typeof Storage
-      const key = Uint8Array.from({ length: 32 }, (_, index) => index)
-      await loadObject(id, host, 60_000, key, () => undefined)
+      await loadObject(id, host, 60_000, cipherKey, () => undefined)
     },
-    { host: HOST, id: ID }
+    { host: HOST, id: ID, cipherKey: key }
   )
   expect(reads).toBe(1)
 })

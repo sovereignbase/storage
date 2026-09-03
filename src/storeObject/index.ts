@@ -1,84 +1,23 @@
-import {
-  CACHE_NAME,
-  cacheObject,
-  encodeObject,
-  parseObjectUrl,
-} from '../.helpers/index.js'
+import { CACHE_NAME, cacheObject, encodeObject } from '../.helpers/index.js'
 
 import type { CipherKey } from '@sovereignbase/cryptosuite'
+import { WriteQueue } from '../WriteQueue/index.js'
+import { URLString } from '../.types/index.js'
 
-/**
- * Encrypts an object through cryptosuite and stores its encoded representation
- * in the Cache API.
- *
- * This function provides local caching, not durable remote persistence. After
- * encoding, compression, encryption, and caching succeed, `onObjectStored` is
- * called with the opaque bytes that the application can upload to its storage
- * service. Persist the bytes unchanged at `host + id` with the
- * `application/octet-stream` media type so that {@link loadObject} can retrieve
- * them later. The public read endpoint must support cross-origin access for its
- * intended consumers, typically with `Access-Control-Allow-Origin: *`.
- *
- * The callback's return value is ignored and is not awaited. If the caller must
- * observe remote persistence, it should track and await that work separately.
- * Encoding, encryption, cache, and callback failures reject the returned
- * promise; failures in an unobserved promise created by the callback do not.
- *
- * @param id - Object identifier appended directly to `host`. It must produce a
- * URL whose path is exactly `/${id}` and which has no credentials, query, or
- * fragment.
- * @param host - HTTPS origin prefix ending in `/`, for example
- * `https://objects.example/`.
- * @param cacheFor - Cache freshness in milliseconds, expressed through
- * standard `Cache-Control`, `Date`, and `Expires` response headers.
- * @param cipherKey - Cryptosuite `CipherKey` JWK used to encrypt the object.
- * Generate or derive it with `Cryptographic.cipherMessage`, keep it secret, and
- * reuse the same key when loading the object.
- * @param object - Any value supported by the MessagePack encoder.
- * @param onObjectStored - Called once with the compressed, encrypted, and
- * MessagePack-wrapped bytes after they have been cached. The callback owns
- * remote persistence, and its return value is not awaited.
- * @returns A promise that settles after local caching and callback invocation.
- * It does not imply that callback-managed remote persistence has completed.
- *
- * @example Fire-and-forget local storage and hand the encrypted bytes to a persistence endpoint.
- * ```ts
- * import { Cryptographic } from '@sovereignbase/cryptosuite'
- * import { storeObject } from '@sovereignbase/storage'
- *
- * const cipherKey = await Cryptographic.cipherMessage.generateKey()
- *
- * void storeObject(
- *   'welcome',
- *   'https://objects.example/',
- *   15 * 60 * 1000,
- *   cipherKey,
- *   { title: 'Hello' },
- *   (bytes) => {
- *     void fetch('/api/objects/welcome', {
- *       method: 'PUT',
- *       headers: { 'content-type': 'application/octet-stream' },
- *       body: bytes,
- *     })
- *   }
- * )
- * ```
- */
 export async function storeObject(
-  id: string,
-  host: string,
-  cacheFor: number,
-  cipherKey: CipherKey,
+  url: URLString,
   object: unknown,
-  onObjectStored: (object: Uint8Array<ArrayBuffer>) => void
+  cipherKey: CipherKey
 ): Promise<void> {
-  const url = parseObjectUrl(id, host)
-  if (!url) return
-
   const encoded = await encodeObject(object, cipherKey)
 
   const cache = await caches.open(CACHE_NAME)
   const request = new Request(url)
+
+  void WriteQueue.enqueue({
+    kind: 'store',
+    url,
+  })
 
   void (await cacheObject(
     cache,
@@ -87,9 +26,6 @@ export async function storeObject(
       headers: {
         'content-type': 'application/octet-stream',
       },
-    }),
-    cacheFor
+    })
   ))
-
-  void onObjectStored(encoded)
 }

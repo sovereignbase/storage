@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/sovereignbase/storage/compare/v2.0.0...v2.1.0) (2026-09-03)
+
+
+### Features
+
+* finalize persistent write queue refactor ([780c088](https://github.com/sovereignbase/storage/commit/780c0885f1de09fcec6d6b3b52c0ea3c4f986564))
+
 ## [2.0.0](https://github.com/sovereignbase/storage/compare/v1.0.2...v2.0.0) (2026-08-29)
 
 

@@ -1,7 +1,7 @@
 /** Cache namespace shared by all objects managed by this package. @internal */
 export const CACHE_NAME = '@sovereignbase/storage/cache' as const
-export const MAX_OBJECT_SIZE = (24 * 1024 * 1024) as const
-export const BROWSER_GC_HINT = (60 * 60 * 24 * 90) as const
+export const MAX_OBJECT_SIZE = 24 * 1024 * 1024
+export const BROWSER_GC_HINT = 60 * 60 * 24 * 90
 
 import { decode, encode } from '@msgpack/msgpack'
 import { Bytes } from '@sovereignbase/bytecodec'

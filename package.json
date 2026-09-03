@@ -55,6 +55,7 @@
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.4.1",
     "@vitest/coverage-v8": "^5.0.0",
+    "fake-indexeddb": "^6.2.5",
     "husky": "^9.1.7",
     "playwright": "^1.62.1",
     "prettier": "^3.9.6",

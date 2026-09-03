@@ -5,9 +5,8 @@ import { resolve, sep } from 'node:path'
 import { Cryptographic, type CipherKey } from '@sovereignbase/cryptosuite'
 import type * as Storage from '../../../src/index.js'
 
-const CACHE_NAME = '@sovereignbase/storage/objects'
-const HOST = 'https://objects.example/'
-const ID = 'browser-object'
+const CACHE_NAME = '@sovereignbase/storage/cache'
+const URL = 'https://objects.example/browser-object' as const
 const bundlePath = resolve(process.cwd(), 'dist', 'index.js')
 const nodeModulesRoot = resolve(process.cwd(), 'node_modules')
 const nodeModulesPrefix = '/node_modules/'
@@ -46,6 +45,7 @@ test.beforeAll(async () => {
           "@msgpack/msgpack":"${nodeModulesPrefix}@msgpack/msgpack/dist.esm/index.mjs",
           "@sovereignbase/cryptosuite":"${nodeModulesPrefix}@sovereignbase/cryptosuite/dist/index.js",
           "@sovereignbase/bytecodec":"${nodeModulesPrefix}@sovereignbase/bytecodec/dist/index.js",
+          "@sovereignbase/utils":"${nodeModulesPrefix}@sovereignbase/utils/dist/index.js",
           "@noble/ciphers/":"${nodeModulesPrefix}@noble/ciphers/",
           "@noble/curves/":"${nodeModulesPrefix}@noble/curves/",
           "@noble/hashes/":"${nodeModulesPrefix}@noble/hashes/",
@@ -75,17 +75,18 @@ test.afterAll(async () => {
   })
 })
 
-test('persists remotely, hydrates the DOM, and reuses the browser cache', async ({
+test('syncs queued writes, hydrates the DOM, and reuses the cache', async ({
   page,
 }) => {
   let persisted: Buffer | undefined
   let reads = 0
+  let deletes = 0
 
-  await page.route(`${HOST}**`, async (route) => {
+  await page.route(`${URL}*`, async (route) => {
     const request = route.request()
     const headers = {
       'access-control-allow-origin': '*',
-      'access-control-allow-methods': 'GET, PUT, OPTIONS',
+      'access-control-allow-methods': 'GET, PUT, DELETE, OPTIONS',
       'access-control-allow-headers': 'content-type',
     }
 
@@ -96,6 +97,13 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
 
     if (request.method() === 'PUT') {
       persisted = request.postDataBuffer() ?? undefined
+      await route.fulfill({ status: 204, headers })
+      return
+    }
+
+    if (request.method() === 'DELETE') {
+      persisted = undefined
+      deletes += 1
       await route.fulfill({ status: 204, headers })
       return
     }
@@ -113,33 +121,45 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
 
   await page.goto(testOrigin)
   await page.evaluate(
-    async ({ host, id, cipherKey }) => {
+    async ({ url, cipherKey, cacheName }) => {
       const moduleUrl = '/dist/index.js'
-      const { storeObject } = (await import(moduleUrl)) as typeof Storage
+      const { storeObject, WriteQueue } = (await import(
+        moduleUrl
+      )) as typeof Storage
 
-      void storeObject(
-        id,
-        host,
-        60_000,
-        cipherKey,
-        { title: 'Hydrated' },
-        (bytes) => {
-          void fetch(host + id, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/octet-stream' },
-            body: bytes,
-          })
-        }
-      )
+      WriteQueue.onQueued = () => {
+        void (async () => {
+          const queued = await WriteQueue.dequeue()
+          if (!queued) return
+
+          if (queued.operation.kind === 'store') {
+            const cached = await (
+              await caches.open(cacheName)
+            ).match(queued.operation.url)
+            if (!cached) throw new Error('Queued object is missing from cache')
+            await fetch(queued.operation.url, {
+              method: 'PUT',
+              headers: { 'content-type': 'application/octet-stream' },
+              body: await cached.arrayBuffer(),
+            })
+          } else {
+            await fetch(queued.operation.url, { method: 'DELETE' })
+          }
+
+          await queued.finalize()
+        })()
+      }
+
+      await storeObject(url, { title: 'Hydrated' }, cipherKey)
     },
-    { host: HOST, id: ID, cipherKey: key }
+    { url: URL, cipherKey: key, cacheName: CACHE_NAME }
   )
 
   await expect.poll(() => persisted?.byteLength ?? 0).toBeGreaterThan(0)
 
   await page.evaluate(async (cacheName) => caches.delete(cacheName), CACHE_NAME)
   await page.evaluate(
-    ({ host, id, cipherKey }) => {
+    ({ url, cipherKey }) => {
       const app = document.querySelector<HTMLElement>('#app')
       if (!app) throw new Error('Missing app element')
 
@@ -148,13 +168,13 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
 
       const moduleUrl = '/dist/index.js'
       void import(moduleUrl).then(({ loadObject }) => {
-        void loadObject(id, host, 60_000, cipherKey, (object: unknown) => {
+        void loadObject(url, cipherKey, (object: unknown) => {
           app.textContent = (object as { title: string }).title
           app.dataset.hydrated = 'true'
         })
       })
     },
-    { host: HOST, id: ID, cipherKey: key }
+    { url: URL, cipherKey: key }
   )
 
   await expect(page.locator('#app')).toHaveAttribute('data-shell', 'ready')
@@ -162,30 +182,32 @@ test('persists remotely, hydrates the DOM, and reuses the browser cache', async 
   await expect(page.locator('#app')).toHaveText('Hydrated')
   expect(reads).toBe(1)
 
-  const cacheHeaders = await page.evaluate(
-    async ({ cacheName, url }) => {
-      const cache = await caches.open(cacheName)
-      const response = await cache.match(url)
-      return {
-        cacheControl: response?.headers.get('cache-control'),
-        date: response?.headers.get('date'),
-        expires: response?.headers.get('expires'),
-      }
-    },
-    { cacheName: CACHE_NAME, url: `${HOST}${ID}` }
-  )
-  expect(cacheHeaders.cacheControl).toBe('public, max-age=60, must-revalidate')
-  expect(Date.parse(cacheHeaders.expires ?? '')).toBeGreaterThan(
-    Date.parse(cacheHeaders.date ?? '')
-  )
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async ({ cacheName, url }) => {
+          const response = await (await caches.open(cacheName)).match(url)
+          return response?.headers.get('cache-control')
+        },
+        { cacheName: CACHE_NAME, url: URL }
+      )
+    )
+    .toBe('public, max-age=7776000, must-revalidate')
 
   await page.evaluate(
-    async ({ host, id, cipherKey }) => {
+    async ({ url, cipherKey }) => {
       const moduleUrl = '/dist/index.js'
       const { loadObject } = (await import(moduleUrl)) as typeof Storage
-      await loadObject(id, host, 60_000, cipherKey, () => undefined)
+      await loadObject(url, cipherKey, () => undefined)
     },
-    { host: HOST, id: ID, cipherKey: key }
+    { url: URL, cipherKey: key }
   )
   expect(reads).toBe(1)
+
+  await page.evaluate(async (url) => {
+    const moduleUrl = '/dist/index.js'
+    const { deleteObject } = (await import(moduleUrl)) as typeof Storage
+    await deleteObject(url)
+  }, URL)
+  await expect.poll(() => deletes).toBe(1)
 })

@@ -1,13 +1,16 @@
 import { getIDB } from '../.helpers/index.js'
 import type { WriteOperation } from '../.types/index.js'
 
+/** Persistent FIFO of remote store and delete operations. */
 export class WriteQueue {
+  /** Called after an operation has been committed to the queue. */
   public static onQueued: () => void
 
+  /** Adds an operation to the end of the queue. */
   static async enqueue(operation: WriteOperation): Promise<void> {
     const db = await getIDB()
 
-    void new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const req = db
         .transaction('write-queue', 'readwrite')
         .objectStore('write-queue')
@@ -21,6 +24,12 @@ export class WriteQueue {
     })
   }
 
+  /**
+   * Returns the oldest operation without removing it.
+   *
+   * Call `finalize` only after the corresponding remote write succeeds. An
+   * operation remains at the head of the queue until finalized.
+   */
   static async dequeue(): Promise<
     | {
         operation: WriteOperation
@@ -56,23 +65,27 @@ export class WriteQueue {
                 .objectStore('write-queue')
                 .delete(key)
 
-              req.onsuccess = () => resolve()
-              req.onerror = () => reject(req.error)
+              req.onsuccess = () => void resolve()
+              req.onerror = () => void reject(req.error)
             })
           },
         })
       }
 
-      req.onerror = () => reject(req.error)
+      req.onerror = () => void reject(req.error)
     })
   }
 
+  /** Returns the number of pending operations. */
   static async size(): Promise<number> {
     const db = await getIDB()
     return new Promise((resolve, reject) => {
-      const req = db.transaction('operations').objectStore('operations').count()
-      req.onsuccess = () => resolve(req.result)
-      req.onerror = () => reject(req.error)
+      const req = db
+        .transaction('write-queue')
+        .objectStore('write-queue')
+        .count()
+      req.onsuccess = () => void resolve(req.result)
+      req.onerror = () => void reject(req.error)
     })
   }
 }

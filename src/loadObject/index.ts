@@ -9,18 +9,17 @@ import type { URLString } from '../.types/index.js'
  *
  * The Cache API is checked first. On a miss, the URL is fetched without
  * credentials. Successful cache and network responses receive refreshed cache
- * metadata in the background after `onObjectLoaded` runs. A non-successful HTTP
- * response completes without calling the callback.
+ * metadata in the background. A non-successful HTTP response resolves to
+ * `undefined`.
  *
  * @param url Absolute HTTP(S) URL used as both the cache key and network location.
  * @param cipherKey The same cryptosuite cipher key used to store the object.
- * @param onObjectLoaded Called with the decoded value; its return value is ignored.
+ * @returns The decoded object, or `undefined` for a non-successful HTTP response.
  */
 export async function loadObject(
   url: URLString,
-  cipherKey: CipherKey,
-  onObjectLoaded: (object: unknown) => void
-): Promise<void> {
+  cipherKey: CipherKey
+): Promise<unknown> {
   const cache = await caches.open(CACHE_NAME)
 
   const request = new Request(url)
@@ -32,10 +31,11 @@ export async function loadObject(
 
   const responseToCache = response.clone()
 
-  void onObjectLoaded(
-    await decodeObject(new Uint8Array(await response.arrayBuffer()), cipherKey)
-  )
-
   // Reads always refresh cache freshness without delaying callback hydration.
   void queueMicrotask(() => cacheObject(cache, request, responseToCache))
+
+  return await decodeObject(
+    new Uint8Array(await response.arrayBuffer()),
+    cipherKey
+  )
 }

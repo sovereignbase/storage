@@ -102,16 +102,20 @@ import { loadObject } from '@sovereignbase/storage'
 
 const output = document.createElement('output')
 output.textContent = 'Loading…'
+
+const objectPromise = loadObject(url, cipherKey)
+
+// Continue building the UI while loading is already in progress.
 document.body.append(output)
 
-void loadObject(url, cipherKey, (object) => {
-  output.textContent = object.name
-})
+const object = await objectPromise
+if (object) output.textContent = object.name
 ```
 
 `loadObject` reads from the cache first and fetches `url` on a miss. Successful
-reads refresh the cache in the background. A non-successful HTTP response
-completes without calling the callback.
+reads refresh the cache in the background. Start the load as early as useful and
+await its promise only when the value is needed. A non-successful HTTP response
+resolves to `undefined`.
 
 ### Delete
 

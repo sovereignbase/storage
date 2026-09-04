@@ -159,20 +159,20 @@ test('syncs queued writes, hydrates the DOM, and reuses the cache', async ({
 
   await page.evaluate(async (cacheName) => caches.delete(cacheName), CACHE_NAME)
   await page.evaluate(
-    ({ url, cipherKey }) => {
+    async ({ url, cipherKey }) => {
+      const moduleUrl = '/dist/index.js'
+      const { loadObject } = (await import(moduleUrl)) as typeof Storage
+      const objectPromise = loadObject(url, cipherKey)
+
       const app = document.querySelector<HTMLElement>('#app')
       if (!app) throw new Error('Missing app element')
 
       app.dataset.shell = 'ready'
       app.textContent = 'Loading'
 
-      const moduleUrl = '/dist/index.js'
-      void import(moduleUrl).then(({ loadObject }) => {
-        void loadObject(url, cipherKey, (object: unknown) => {
-          app.textContent = (object as { title: string }).title
-          app.dataset.hydrated = 'true'
-        })
-      })
+      const object = await objectPromise
+      app.textContent = (object as { title: string }).title
+      app.dataset.hydrated = 'true'
     },
     { url: URL, cipherKey: key }
   )
@@ -198,7 +198,7 @@ test('syncs queued writes, hydrates the DOM, and reuses the cache', async ({
     async ({ url, cipherKey }) => {
       const moduleUrl = '/dist/index.js'
       const { loadObject } = (await import(moduleUrl)) as typeof Storage
-      await loadObject(url, cipherKey, () => undefined)
+      await loadObject(url, cipherKey)
     },
     { url: URL, cipherKey: key }
   )

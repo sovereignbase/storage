@@ -93,10 +93,9 @@ describe('public storage API', () => {
     await storeObject(URL, object, key)
     cache.puts.length = 0
 
-    const onLoaded = vi.fn()
-    await loadObject(URL, key, onLoaded)
+    const loaded = await loadObject(URL, key)
 
-    expect(onLoaded).toHaveBeenCalledWith(object)
+    expect(loaded).toEqual(object)
     expect(fetchMock).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(cache.puts).toHaveLength(1))
   })
@@ -113,10 +112,9 @@ describe('public storage API', () => {
       })
     )
 
-    const onLoaded = vi.fn()
-    await loadObject(URL, key, onLoaded)
+    const loaded = await loadObject(URL, key)
 
-    expect(onLoaded).toHaveBeenCalledWith('network object')
+    expect(loaded).toBe('network object')
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(fetchMock.mock.calls[0][0].url).toBe(URL)
     await vi.waitFor(() => expect(cache.puts).toHaveLength(1))
@@ -125,13 +123,12 @@ describe('public storage API', () => {
     expect(cache.puts[0].response.headers.get('x-source')).toBe('network')
   })
 
-  it('does not cache or call back for a non-successful response', async () => {
+  it('does not cache and returns undefined for a non-successful response', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 404 }))
-    const onLoaded = vi.fn()
 
-    await loadObject(URL, key, onLoaded)
+    const loaded = await loadObject(URL, key)
 
-    expect(onLoaded).not.toHaveBeenCalled()
+    expect(loaded).toBeUndefined()
     expect(cache.puts).toHaveLength(0)
   })
 

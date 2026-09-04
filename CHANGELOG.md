@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/sovereignbase/storage/compare/v2.1.0...v2.1.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* return loaded object from loadObject ([57c5d2a](https://github.com/sovereignbase/storage/commit/57c5d2aaef12c1081870e5da08e2e3bb94e3f7dd))
+
 ## [2.1.0](https://github.com/sovereignbase/storage/compare/v2.0.0...v2.1.0) (2026-09-03)
 
 

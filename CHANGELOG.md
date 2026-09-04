@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/sovereignbase/storage/compare/v2.1.1...v3.0.0) (2026-09-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* previously stored unpadded objects are no longer decodable.
+
+### Features
+
+* add padded storage and cache-only loading ([498fbe9](https://github.com/sovereignbase/storage/commit/498fbe9d86878f5ed4c5822b247ad604b7351c1b))
+
 ## [2.1.1](https://github.com/sovereignbase/storage/compare/v2.1.0...v2.1.1) (2026-09-04)
 
 

@@ -100,12 +100,11 @@ queue operation have both been written.
 ```js
 import { loadObject } from '@sovereignbase/storage'
 
-const output = document.createElement('output')
-output.textContent = 'Loading…'
-
 const objectPromise = loadObject(url, cipherKey)
 
-// Continue building the UI while loading is already in progress.
+// Build the UI while loading is already in progress.
+const output = document.createElement('output')
+output.textContent = 'Loading…'
 document.body.append(output)
 
 const object = await objectPromise
@@ -116,6 +115,13 @@ if (object) output.textContent = object.name
 reads refresh the cache in the background. Start the load as early as useful and
 await its promise only when the value is needed. A non-successful HTTP response
 resolves to `undefined`.
+
+Pass `true` as the third argument to avoid network access. A cache miss then
+resolves to `undefined`:
+
+```js
+const cachedObject = await loadObject(url, cipherKey, true)
+```
 
 ### Delete
 
@@ -142,14 +148,18 @@ same key that was used for storage. Generate a random key with
 - Requires the Cache API, IndexedDB, Fetch, Web Crypto, and `Blob`.
 - Accepts an absolute `http://` or `https://` URL as each object's identity and
   remote location.
-- Uses MessagePack, gzip compression, and cryptosuite encryption. Objects whose
-  compressed representation exceeds 24 MiB are rejected with error code
-  `MAX_OBJECT_SIZE_EXCEEDED`.
+- Uses MessagePack, gzip compression, 1 KiB length-hiding padding, and
+  cryptosuite encryption. Objects whose compressed representation exceeds 24
+  MiB are rejected with error code `MAX_OBJECT_SIZE_EXCEEDED`; malformed
+  decrypted padding is rejected with `INVALID_PADDING`.
 - Cache hits take precedence over the network. Successful reads refresh
   `Cache-Control`, `Date`, and `Expires` with a 90-day freshness hint.
+- Cache-only loads never make a network request.
 - Remote responses need to allow the browser origin when used cross-origin.
 - Write operations are stored in IndexedDB in FIFO order and remain queued until
   their `finalize()` function succeeds.
+- IndexedDB failures reject with an operation-specific `StorageError`; the
+  browser's original error is available through its `cause` property.
 - Dependencies are not bundled.
 
 ## Tests

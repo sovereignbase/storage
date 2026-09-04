@@ -8,10 +8,11 @@ import type { URLString } from '../.types/index.js'
  * Encrypts and caches an object, then adds a store operation to the persistent
  * write queue.
  *
- * The object is MessagePack-encoded, gzip-compressed, and encrypted before it
- * enters the Cache API. The returned promise settles only after both the cache
- * write and queue write complete. A queue consumer can then read the opaque
- * response from the cache and upload it to `url`.
+ * The object is MessagePack-encoded, gzip-compressed, padded to a 1 KiB
+ * boundary, and encrypted before it enters the Cache API. The returned promise
+ * settles only after both the cache write and queue write complete. A queue
+ * consumer can then read the opaque response from the cache and upload it to
+ * `url`.
  *
  * @param url Absolute HTTP(S) URL that identifies the object locally and remotely.
  * @param object Any value supported by the MessagePack encoder.

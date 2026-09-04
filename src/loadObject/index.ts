@@ -14,11 +14,15 @@ import type { URLString } from '../.types/index.js'
  *
  * @param url Absolute HTTP(S) URL used as both the cache key and network location.
  * @param cipherKey The same cryptosuite cipher key used to store the object.
+ * @param cacheOnly When true, return `undefined` on a cache miss without fetching.
  * @returns The decoded object, or `undefined` for a non-successful HTTP response.
+ * @throws `StorageError` with code `INVALID_PADDING` when decrypted bytes do not
+ * contain a valid length-prefixed 1 KiB padding envelope.
  */
 export async function loadObject(
   url: URLString,
-  cipherKey: CipherKey
+  cipherKey: CipherKey,
+  cacheOnly: boolean = false
 ): Promise<unknown> {
   const cache = await caches.open(CACHE_NAME)
 
@@ -26,6 +30,7 @@ export async function loadObject(
 
   let response = await cache.match(request)
 
+  if (!response && cacheOnly) return
   if (!response) response = await fetch(request)
   if (!response.ok) return
 

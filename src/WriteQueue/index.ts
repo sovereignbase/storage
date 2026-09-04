@@ -1,4 +1,5 @@
 import { getIDB } from '../.helpers/index.js'
+import { StorageError } from '../.errors/index.js'
 import type { WriteOperation } from '../.types/index.js'
 
 /** Persistent FIFO of remote store and delete operations. */
@@ -6,7 +7,13 @@ export class WriteQueue {
   /** Called after an operation has been committed to the queue. */
   public static onQueued: () => void
 
-  /** Adds an operation to the end of the queue. */
+  /**
+   * Adds an operation to the end of the queue.
+   *
+   * @throws `StorageError` with code `INDEXEDDB_OPEN_FAILED` or
+   * `WRITE_QUEUE_ENQUEUE_FAILED`; the original IndexedDB error is retained as
+   * `cause`.
+   */
   static async enqueue(operation: WriteOperation): Promise<void> {
     const db = await getIDB()
 
@@ -20,7 +27,12 @@ export class WriteQueue {
         if (typeof this.onQueued === 'function') void this.onQueued()
         void resolve()
       }
-      req.onerror = () => void reject(req.error)
+      req.onerror = () =>
+        void reject(
+          new StorageError('WRITE_QUEUE_ENQUEUE_FAILED', undefined, {
+            cause: req.error,
+          })
+        )
     })
   }
 
@@ -29,6 +41,11 @@ export class WriteQueue {
    *
    * Call `finalize` only after the corresponding remote write succeeds. An
    * operation remains at the head of the queue until finalized.
+   *
+   * @throws `StorageError` with code `INDEXEDDB_OPEN_FAILED` or
+   * `WRITE_QUEUE_DEQUEUE_FAILED`. The returned `finalize` function can reject
+   * with `WRITE_QUEUE_FINALIZE_FAILED`. The original IndexedDB error is retained
+   * as `cause`.
    */
   static async dequeue(): Promise<
     | {
@@ -66,17 +83,33 @@ export class WriteQueue {
                 .delete(key)
 
               req.onsuccess = () => void resolve()
-              req.onerror = () => void reject(req.error)
+              req.onerror = () =>
+                void reject(
+                  new StorageError('WRITE_QUEUE_FINALIZE_FAILED', undefined, {
+                    cause: req.error,
+                  })
+                )
             })
           },
         })
       }
 
-      req.onerror = () => void reject(req.error)
+      req.onerror = () =>
+        void reject(
+          new StorageError('WRITE_QUEUE_DEQUEUE_FAILED', undefined, {
+            cause: req.error,
+          })
+        )
     })
   }
 
-  /** Returns the number of pending operations. */
+  /**
+   * Returns the number of pending operations.
+   *
+   * @throws `StorageError` with code `INDEXEDDB_OPEN_FAILED` or
+   * `WRITE_QUEUE_SIZE_FAILED`; the original IndexedDB error is retained as
+   * `cause`.
+   */
   static async size(): Promise<number> {
     const db = await getIDB()
     return new Promise((resolve, reject) => {
@@ -85,7 +118,12 @@ export class WriteQueue {
         .objectStore('write-queue')
         .count()
       req.onsuccess = () => void resolve(req.result)
-      req.onerror = () => void reject(req.error)
+      req.onerror = () =>
+        void reject(
+          new StorageError('WRITE_QUEUE_SIZE_FAILED', undefined, {
+            cause: req.error,
+          })
+        )
     })
   }
 }

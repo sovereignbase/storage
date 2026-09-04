@@ -17,10 +17,11 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Encrypts and caches an object, then adds a store operation to the persistent
 write queue.</p>
-<p>The object is MessagePack-encoded, gzip-compressed, and encrypted before it
-enters the Cache API. The returned promise settles only after both the cache
-write and queue write complete. A queue consumer can then read the opaque
-response from the cache and upload it to <code>url</code>.</p>
+<p>The object is MessagePack-encoded, gzip-compressed, padded to a 1 KiB
+boundary, and encrypted before it enters the Cache API. The returned promise
+settles only after both the cache write and queue write complete. A queue
+consumer can then read the opaque response from the cache and upload it to
+<code>url</code>.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -42,7 +43,7 @@ object exceeds 24 MiB. Encoding, encryption, Cache API, and IndexedDB failures
 also reject the promise.</p>
 </div></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/sovereignbase/storage/blob/7de406323a6b67ae431f70bd9b0fbcbce14353b1/src/storeObject/index.ts#L23">src/storeObject/index.ts:23</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/sovereignbase/storage/blob/57c5d2aaef12c1081870e5da08e2e3bb94e3f7dd/src/storeObject/index.ts#L24">src/storeObject/index.ts:24</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

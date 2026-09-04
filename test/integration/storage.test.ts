@@ -93,7 +93,7 @@ describe('public storage API', () => {
     await storeObject(URL, object, key)
     cache.puts.length = 0
 
-    const loaded = await loadObject(URL, key)
+    const loaded = await loadObject(URL, key, true)
 
     expect(loaded).toEqual(object)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -129,6 +129,14 @@ describe('public storage API', () => {
     const loaded = await loadObject(URL, key)
 
     expect(loaded).toBeUndefined()
+    expect(cache.puts).toHaveLength(0)
+  })
+
+  it('returns undefined without fetching on a cache-only miss', async () => {
+    const loaded = await loadObject(URL, key, true)
+
+    expect(loaded).toBeUndefined()
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(cache.puts).toHaveLength(0)
   })
 

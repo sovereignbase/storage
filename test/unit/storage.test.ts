@@ -9,6 +9,8 @@ import {
   encodeObject,
   getIDB,
   MAX_OBJECT_SIZE,
+  padTo1KiB,
+  unpadFrom1KiB,
 } from '../../src/.helpers/index.js'
 import { WriteQueue } from '../../src/WriteQueue/index.js'
 
@@ -78,10 +80,53 @@ describe('storage helpers', () => {
     await expect(decodeObject(encoded, wrongKey)).rejects.toBeInstanceOf(Error)
   })
 
-  it('rejects objects whose compressed representation exceeds 24 MiB', async () => {
-    vi.spyOn(Bytes.gzip, 'encode').mockResolvedValue(
-      new Uint8Array(MAX_OBJECT_SIZE + 1)
+  it.each([
+    [0, 1024],
+    [1, 1024],
+    [1019, 1024],
+    [1020, 1024],
+    [1021, 2048],
+    [2044, 2048],
+    [2045, 3072],
+  ])(
+    'pads %i bytes to %i bytes and unpads without copying',
+    (length, paddedLength) => {
+      const bytes = new Uint8Array(length)
+      if (length > 0) bytes[length - 1] = 0xff
+
+      const padded = padTo1KiB(bytes)
+      const unpadded = unpadFrom1KiB(padded)
+
+      expect(padded.byteLength).toBe(paddedLength)
+      expect(unpadded.byteLength).toBe(length)
+      expect(unpadded.buffer).toBe(padded.buffer)
+      expect(unpadded.byteOffset).toBe(4)
+      expect(unpadded).toEqual(bytes)
+    }
+  )
+
+  it('stores the byte length in the four-byte padding prefix', () => {
+    expect(padTo1KiB(new Uint8Array(1021)).slice(0, 4)).toEqual(
+      new Uint8Array([0, 0, 3, 253])
     )
+  })
+
+  it.each([new Uint8Array(3), new Uint8Array([0, 0, 4, 0, ...Array(1020)])])(
+    'rejects invalid padding with a structured storage error',
+    (bytes) => {
+      expect(() => unpadFrom1KiB(bytes)).toThrowError(
+        expect.objectContaining({
+          name: 'StorageError',
+          code: 'INVALID_PADDING',
+        })
+      )
+    }
+  )
+
+  it('rejects oversized compressed data without allocating it in the test', async () => {
+    vi.spyOn(Bytes.gzip, 'encode').mockResolvedValue({
+      byteLength: MAX_OBJECT_SIZE + 1,
+    } as Uint8Array<ArrayBuffer>)
 
     await expect(encodeObject('too large', key)).rejects.toMatchObject({
       name: 'StorageError',
@@ -110,7 +155,11 @@ describe('storage helpers', () => {
       }),
     })
 
-    await expect(getIDB()).rejects.toBe(failure)
+    await expect(getIDB()).rejects.toMatchObject({
+      name: 'StorageError',
+      code: 'INDEXEDDB_OPEN_FAILED',
+      cause: failure,
+    })
     vi.unstubAllGlobals()
   })
 
@@ -141,9 +190,21 @@ describe('storage helpers', () => {
 
     await expect(
       WriteQueue.enqueue({ kind: 'store', url: 'https://objects.example/a' })
-    ).rejects.toBe(failure)
-    await expect(WriteQueue.dequeue()).rejects.toBe(failure)
-    await expect(WriteQueue.size()).rejects.toBe(failure)
+    ).rejects.toMatchObject({
+      name: 'StorageError',
+      code: 'WRITE_QUEUE_ENQUEUE_FAILED',
+      cause: failure,
+    })
+    await expect(WriteQueue.dequeue()).rejects.toMatchObject({
+      name: 'StorageError',
+      code: 'WRITE_QUEUE_DEQUEUE_FAILED',
+      cause: failure,
+    })
+    await expect(WriteQueue.size()).rejects.toMatchObject({
+      name: 'StorageError',
+      code: 'WRITE_QUEUE_SIZE_FAILED',
+      cause: failure,
+    })
 
     operations.openCursor.mockImplementationOnce(() =>
       successfulRequest({
@@ -152,7 +213,11 @@ describe('storage helpers', () => {
       })
     )
     const queued = await WriteQueue.dequeue()
-    await expect(queued?.finalize()).rejects.toBe(failure)
+    await expect(queued?.finalize()).rejects.toMatchObject({
+      name: 'StorageError',
+      code: 'WRITE_QUEUE_FINALIZE_FAILED',
+      cause: failure,
+    })
     vi.unstubAllGlobals()
   })
 })

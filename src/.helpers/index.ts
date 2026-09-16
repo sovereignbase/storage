@@ -120,7 +120,11 @@ export function getIDB(): Promise<IDBDatabase> {
     const req = indexedDB.open('@sovereignbase/storage/indexedDB', 1)
 
     req.onupgradeneeded = () => {
-      void req.result.createObjectStore('write-queue', { autoIncrement: true })
+      const store = req.result.createObjectStore('write-queue', {
+        autoIncrement: true,
+      })
+
+      store.createIndex('url', 'url', { unique: true })
     }
 
     req.onsuccess = () => void resolve(req.result)

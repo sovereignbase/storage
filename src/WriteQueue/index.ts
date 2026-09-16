@@ -13,24 +13,29 @@ export class WriteQueue {
    * @throws `StorageError` with code `INDEXEDDB_OPEN_FAILED` or
    * `WRITE_QUEUE_ENQUEUE_FAILED`; the original IndexedDB error is retained as
    * `cause`.
-   */
-  static async enqueue(operation: WriteOperation): Promise<void> {
+   */ static async enqueue(operation: WriteOperation): Promise<void> {
     const db = await getIDB()
 
     return new Promise<void>((resolve, reject) => {
-      const req = db
-        .transaction('write-queue', 'readwrite')
-        .objectStore('write-queue')
-        .add(operation)
+      const transaction = db.transaction('write-queue', 'readwrite')
+      const store = transaction.objectStore('write-queue')
+      const req = store.index('url').getKey(operation.url)
 
       req.onsuccess = () => {
+        if (req.result !== undefined) void store.delete(req.result)
+
+        void store.add(operation)
+      }
+
+      transaction.oncomplete = () => {
         if (typeof this.onQueued === 'function') void this.onQueued()
         void resolve()
       }
-      req.onerror = () =>
+
+      transaction.onabort = () =>
         void reject(
           new StorageError('WRITE_QUEUE_ENQUEUE_FAILED', undefined, {
-            cause: req.error,
+            cause: transaction.error,
           })
         )
     })

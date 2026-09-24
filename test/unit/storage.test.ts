@@ -1,5 +1,6 @@
 import { Bytes } from '@sovereignbase/bytecodec'
 import { Cryptographic, type CipherKey } from '@sovereignbase/cryptosuite'
+import { IDBFactory } from 'fake-indexeddb'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { StorageError } from '../../src/.errors/index.js'
 import {
@@ -177,12 +178,20 @@ describe('storage helpers', () => {
     }
     const operations = {
       add: vi.fn(failingRequest),
+      index: vi.fn(() => ({ getAllKeys: failingRequest })),
       openCursor: vi.fn(failingRequest),
       delete: vi.fn(failingRequest),
       count: vi.fn(failingRequest),
     }
+    const transaction = {
+      error: failure,
+      objectStore: () => operations,
+    } as unknown as IDBTransaction
     const database = {
-      transaction: vi.fn(() => ({ objectStore: () => operations })),
+      transaction: vi.fn(() => {
+        queueMicrotask(() => transaction.onabort?.(new Event('abort')))
+        return transaction
+      }),
     } as unknown as IDBDatabase
     vi.stubGlobal('indexedDB', {
       open: vi.fn(() => successfulRequest(database)),
@@ -219,5 +228,60 @@ describe('storage helpers', () => {
       cause: failure,
     })
     vi.unstubAllGlobals()
+  })
+
+  it('upgrades and deduplicates an existing write queue', async () => {
+    const indexedDB = new IDBFactory()
+    vi.stubGlobal('indexedDB', indexedDB)
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('@sovereignbase/storage/indexedDB', 1)
+      request.onupgradeneeded = () => {
+        const store = request.result.createObjectStore('write-queue', {
+          autoIncrement: true,
+        })
+        void store.add({
+          kind: 'store',
+          url: 'https://objects.example/duplicate',
+        })
+        void store.add({
+          kind: 'delete',
+          url: 'https://objects.example/duplicate',
+        })
+      }
+      request.onsuccess = () => {
+        request.result.close()
+        resolve()
+      }
+      request.onerror = () => reject(request.error)
+    })
+
+    const database = await getIDB()
+    const transaction = database.transaction('write-queue')
+    const store = transaction.objectStore('write-queue')
+
+    expect(database.version).toBe(2)
+    expect(store.indexNames.contains('url')).toBe(true)
+    expect(
+      await new Promise((resolve) => {
+        const request = store
+          .index('url')
+          .getAllKeys('https://objects.example/duplicate')
+        request.onsuccess = () => resolve(request.result)
+      })
+    ).toHaveLength(2)
+
+    database.close()
+
+    await WriteQueue.enqueue({
+      kind: 'store',
+      url: 'https://objects.example/duplicate',
+    })
+
+    expect(await WriteQueue.size()).toBe(1)
+    expect((await WriteQueue.dequeue())?.operation).toEqual({
+      kind: 'store',
+      url: 'https://objects.example/duplicate',
+    })
   })
 })

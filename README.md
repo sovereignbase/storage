@@ -157,7 +157,8 @@ same key that was used for storage. Generate a random key with
 - Cache-only loads never make a network request.
 - Remote responses need to allow the browser origin when used cross-origin.
 - Write operations are stored in IndexedDB in FIFO order and remain queued until
-  their `finalize()` function succeeds.
+  their `finalize()` function succeeds. Enqueuing another operation for the same
+  URL replaces the older pending operation.
 - IndexedDB failures reject with an operation-specific `StorageError`; the
   browser's original error is available through its `cause` property.
 - Dependencies are not bundled.

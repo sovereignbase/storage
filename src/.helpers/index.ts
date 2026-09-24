@@ -117,14 +117,16 @@ export async function encodeObject(
 
 export function getIDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('@sovereignbase/storage/indexedDB', 1)
+    const req = indexedDB.open('@sovereignbase/storage/indexedDB', 2)
 
     req.onupgradeneeded = () => {
-      const store = req.result.createObjectStore('write-queue', {
-        autoIncrement: true,
-      })
+      const store = req.result.objectStoreNames.contains('write-queue')
+        ? req.transaction!.objectStore('write-queue')
+        : req.result.createObjectStore('write-queue', {
+            autoIncrement: true,
+          })
 
-      store.createIndex('url', 'url', { unique: true })
+      store.createIndex('url', 'url')
     }
 
     req.onsuccess = () => void resolve(req.result)

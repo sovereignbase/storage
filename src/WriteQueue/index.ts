@@ -8,21 +8,23 @@ export class WriteQueue {
   public static onQueued: () => void
 
   /**
-   * Adds an operation to the end of the queue.
+   * Adds an operation to the end of the queue, replacing any pending operations
+   * for the same URL.
    *
    * @throws `StorageError` with code `INDEXEDDB_OPEN_FAILED` or
    * `WRITE_QUEUE_ENQUEUE_FAILED`; the original IndexedDB error is retained as
    * `cause`.
-   */ static async enqueue(operation: WriteOperation): Promise<void> {
+   */
+  static async enqueue(operation: WriteOperation): Promise<void> {
     const db = await getIDB()
 
     return new Promise<void>((resolve, reject) => {
       const transaction = db.transaction('write-queue', 'readwrite')
       const store = transaction.objectStore('write-queue')
-      const req = store.index('url').getKey(operation.url)
+      const req = store.index('url').getAllKeys(operation.url)
 
       req.onsuccess = () => {
-        if (req.result !== undefined) void store.delete(req.result)
+        for (const key of req.result) void store.delete(key)
 
         void store.add(operation)
       }

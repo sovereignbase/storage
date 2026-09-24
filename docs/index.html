@@ -78,7 +78,8 @@ decrypted padding is rejected with <code>INVALID_PADDING</code>.</li>
 <li>Cache-only loads never make a network request.</li>
 <li>Remote responses need to allow the browser origin when used cross-origin.</li>
 <li>Write operations are stored in IndexedDB in FIFO order and remain queued until
-their <code>finalize()</code> function succeeds.</li>
+their <code>finalize()</code> function succeeds. Enqueuing another operation for the same
+URL replaces the older pending operation.</li>
 <li>IndexedDB failures reject with an operation-specific <code>StorageError</code>; the
 browser's original error is available through its <code>cause</code> property.</li>
 <li>Dependencies are not bundled.</li>

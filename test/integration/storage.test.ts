@@ -10,6 +10,7 @@ import {
 
 const CACHE_NAME = '@sovereignbase/storage/cache'
 const URL = 'https://objects.example/object' as const
+const OTHER_URL = 'https://objects.example/other' as const
 let key: CipherKey
 
 class MemoryCache {
@@ -152,5 +153,20 @@ describe('public storage API', () => {
       kind: 'delete',
       url: URL,
     })
+  })
+
+  it('keeps only the latest queued operation for each URL', async () => {
+    await WriteQueue.enqueue({ kind: 'store', url: URL })
+    await WriteQueue.enqueue({ kind: 'store', url: OTHER_URL })
+    await WriteQueue.enqueue({ kind: 'delete', url: URL })
+
+    expect(await WriteQueue.size()).toBe(2)
+
+    const first = await WriteQueue.dequeue()
+    expect(first?.operation).toEqual({ kind: 'store', url: OTHER_URL })
+    await first?.finalize()
+
+    const second = await WriteQueue.dequeue()
+    expect(second?.operation).toEqual({ kind: 'delete', url: URL })
   })
 })

@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/sovereignbase/storage/compare/v3.0.0...v3.1.0) (2026-09-24)
+
+
+### Features
+
+* deduplicate write queue operations ([a7c2cef](https://github.com/sovereignbase/storage/commit/a7c2cefee0f6f90edf08e15d56c6d0dba802a74e))
+
 ## [3.0.0](https://github.com/sovereignbase/storage/compare/v2.1.1...v3.0.0) (2026-09-04)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/sovereignbase/storage/compare/v3.1.0...v3.2.0) (2026-10-18)
+
+
+### Features
+
+* add background network callback to loadObject ([9f3cc2b](https://github.com/sovereignbase/storage/commit/9f3cc2b75b11598c2d2078cbdd53504aea426d4e))
+
 ## [3.1.0](https://github.com/sovereignbase/storage/compare/v3.0.0...v3.1.0) (2026-09-24)
 
 

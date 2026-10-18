@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
 import { resolve, sep } from 'node:path'
 import { Cryptographic, type CipherKey } from '@sovereignbase/cryptosuite'
+import { encodeObject } from '../../../src/.helpers/index.js'
 import type * as Storage from '../../../src/index.js'
 
 const CACHE_NAME = '@sovereignbase/storage/cache'
@@ -210,4 +211,150 @@ test('syncs queued writes, hydrates the DOM, and reuses the cache', async ({
     await deleteObject(url)
   }, URL)
   await expect.poll(() => deletes).toBe(1)
+})
+
+for (const delayed of [false, true]) {
+  test(`hydrates local state and merges a ${delayed ? 'delayed' : 'fast'} network replica`, async ({
+    page,
+  }) => {
+    const remote = Buffer.from(await encodeObject(['remote edit'], key))
+    const release = Promise.withResolvers<void>()
+    const pageErrors: string[] = []
+    page.on('pageerror', (error) => pageErrors.push(error.message))
+    let reads = 0
+
+    await page.route(`${URL}*`, async (route) => {
+      reads += 1
+      if (delayed) await release.promise
+      await route.fulfill({
+        status: 200,
+        headers: {
+          'access-control-allow-origin': '*',
+          'content-type': 'application/octet-stream',
+        },
+        body: remote,
+      })
+    })
+    await page.goto(testOrigin)
+
+    const local = await page.evaluate(
+      async ({ url, cipherKey }) => {
+        const moduleUrl = '/dist/index.js'
+        const { storeObject, loadObject } = (await import(
+          moduleUrl
+        )) as typeof Storage
+        await storeObject(url, ['local edit'], cipherKey)
+        const app = document.querySelector<HTMLElement>('#app')!
+        let items: string[]
+        const objectPromise = loadObject(
+          url,
+          cipherKey,
+          false,
+          async (data) => {
+            // A fast response must still arrive after items has been initialized.
+            items.push(...(data as string[]))
+            app.textContent = items.join(', ')
+            await storeObject(url, items, cipherKey)
+            app.dataset.synced = 'true'
+          }
+        )
+
+        items = (await objectPromise) as string[]
+        app.textContent = items.join(', ')
+        app.dataset.hydrated = 'true'
+        return items.slice()
+      },
+      { url: URL, cipherKey: key }
+    )
+
+    expect(local).toEqual(['local edit'])
+    await expect(page.locator('#app')).toHaveAttribute('data-hydrated', 'true')
+    if (delayed) {
+      await expect.poll(() => reads).toBe(1)
+      await expect(page.locator('#app')).toHaveText('local edit')
+      await expect(page.locator('#app')).not.toHaveAttribute('data-synced')
+      release.resolve()
+    }
+
+    await expect(page.locator('#app')).toHaveAttribute('data-synced', 'true')
+    await expect(page.locator('#app')).toHaveText('local edit, remote edit')
+    const persisted = await page.evaluate(
+      async ({ url, cipherKey }) => {
+        const moduleUrl = '/dist/index.js'
+        const { loadObject, WriteQueue } = (await import(
+          moduleUrl
+        )) as typeof Storage
+        return {
+          object: await loadObject(url, cipherKey, true),
+          queued: await WriteQueue.size(),
+        }
+      },
+      { url: URL, cipherKey: key }
+    )
+    expect(persisted).toEqual({
+      object: ['local edit', 'remote edit'],
+      queued: 1,
+    })
+    expect(reads).toBe(1)
+    expect(pageErrors).toEqual([])
+  })
+}
+
+test('contains offline failures and keeps cache-only callbacks offline', async ({
+  page,
+}) => {
+  let reads = 0
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  await page.route(`${URL}*`, async (route) => {
+    reads += 1
+    await route.abort('failed')
+  })
+  await page.goto(testOrigin)
+
+  const cached = await page.evaluate(
+    async ({ url, cipherKey }) => {
+      const moduleUrl = '/dist/index.js'
+      const { storeObject, loadObject } = (await import(
+        moduleUrl
+      )) as typeof Storage
+      await storeObject(url, 'local', cipherKey)
+      const app = document.querySelector<HTMLElement>('#app')!
+      app.dataset.callbacks = '0'
+      const onNetworkResponse = () => {
+        app.dataset.callbacks = '1'
+      }
+      const hit = await loadObject(url, cipherKey, true, onNetworkResponse)
+      const miss = await loadObject(
+        `${url}-missing`,
+        cipherKey,
+        true,
+        onNetworkResponse
+      )
+      return { hit, miss }
+    },
+    { url: URL, cipherKey: key }
+  )
+  expect(cached).toEqual({ hit: 'local', miss: undefined })
+  expect(reads).toBe(0)
+
+  await page.evaluate(
+    async ({ url, cipherKey }) => {
+      const moduleUrl = '/dist/index.js'
+      const { loadObject } = (await import(moduleUrl)) as typeof Storage
+      const app = document.querySelector<HTMLElement>('#app')!
+      app.textContent = String(
+        await loadObject(url, cipherKey, false, () => {
+          app.dataset.callbacks = '1'
+        })
+      )
+    },
+    { url: URL, cipherKey: key }
+  )
+  await expect.poll(() => reads).toBe(1)
+  // Round-trip through the page after the browser has processed the failed fetch.
+  await page.waitForLoadState('networkidle')
+  await expect(page.locator('#app')).toHaveText('local')
+  await expect(page.locator('#app')).toHaveAttribute('data-callbacks', '0')
+  expect(pageErrors).toEqual([])
 })

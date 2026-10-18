@@ -33,24 +33,92 @@ write remains available for retry.</p>
 <p>Queue operations contain URLs, not secret keys or plaintext values. A store
 consumer obtains the already encrypted bytes from the Cache API.</p>
 <h3 id="store" class="tsd-anchor-link">Store<a href="#store" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<pre><code class="js"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">storeObject</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/storage&#39;</span><br/><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">Cryptographic</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/cryptosuite&#39;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">url</span><span class="hl-1"> = </span><span class="hl-2">&#39;https://objects.example/profile&#39;</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">cipherKey</span><span class="hl-1"> = </span><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-5">Cryptographic</span><span class="hl-1">.</span><span class="hl-5">cipherMessage</span><span class="hl-1">.</span><span class="hl-0">generateKey</span><span class="hl-1">()</span><br/><br/><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-0">storeObject</span><span class="hl-1">(</span><span class="hl-5">url</span><span class="hl-1">, { </span><span class="hl-5">name:</span><span class="hl-1"> </span><span class="hl-2">&#39;Ada&#39;</span><span class="hl-1"> }, </span><span class="hl-5">cipherKey</span><span class="hl-1">)</span>
+<pre><code class="ts"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">storeObject</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/storage&#39;</span><br/><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">Cryptographic</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/cryptosuite&#39;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">url</span><span class="hl-1"> = </span><span class="hl-2">&#39;https://objects.example/profile&#39;</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">cipherKey</span><span class="hl-1"> = </span><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-5">Cryptographic</span><span class="hl-1">.</span><span class="hl-5">cipherMessage</span><span class="hl-1">.</span><span class="hl-0">generateKey</span><span class="hl-1">()</span><br/><br/><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-0">storeObject</span><span class="hl-1">(</span><span class="hl-5">url</span><span class="hl-1">, { </span><span class="hl-5">name:</span><span class="hl-1"> </span><span class="hl-2">&#39;Ada&#39;</span><span class="hl-1"> }, </span><span class="hl-5">cipherKey</span><span class="hl-1">)</span>
 </code><button type="button">Copy</button></pre>
 
 <p>The returned promise settles after the encrypted cache entry and its persistent
 queue operation have both been written.</p>
 <h3 id="load-and-hydrate" class="tsd-anchor-link">Load and hydrate<a href="#load-and-hydrate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<pre><code class="js"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">loadObject</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/storage&#39;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">objectPromise</span><span class="hl-1"> = </span><span class="hl-0">loadObject</span><span class="hl-1">(</span><span class="hl-5">url</span><span class="hl-1">, </span><span class="hl-5">cipherKey</span><span class="hl-1">)</span><br/><br/><span class="hl-3">// Build the UI while loading is already in progress.</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">output</span><span class="hl-1"> = </span><span class="hl-5">document</span><span class="hl-1">.</span><span class="hl-0">createElement</span><span class="hl-1">(</span><span class="hl-2">&#39;output&#39;</span><span class="hl-1">)</span><br/><span class="hl-5">output</span><span class="hl-1">.</span><span class="hl-5">textContent</span><span class="hl-1"> = </span><span class="hl-2">&#39;Loading…&#39;</span><br/><span class="hl-5">document</span><span class="hl-1">.</span><span class="hl-5">body</span><span class="hl-1">.</span><span class="hl-0">append</span><span class="hl-1">(</span><span class="hl-5">output</span><span class="hl-1">)</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">object</span><span class="hl-1"> = </span><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-5">objectPromise</span><br/><span class="hl-4">if</span><span class="hl-1"> (</span><span class="hl-5">object</span><span class="hl-1">) </span><span class="hl-5">output</span><span class="hl-1">.</span><span class="hl-5">textContent</span><span class="hl-1"> = </span><span class="hl-5">object</span><span class="hl-1">.</span><span class="hl-5">name</span>
+<pre><code class="ts"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">loadObject</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/storage&#39;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">objectPromise</span><span class="hl-1"> = </span><span class="hl-0">loadObject</span><span class="hl-1">(</span><span class="hl-5">url</span><span class="hl-1">, </span><span class="hl-5">cipherKey</span><span class="hl-1">)</span><br/><br/><span class="hl-3">// Build the UI while loading is already in progress.</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">output</span><span class="hl-1"> = </span><span class="hl-5">document</span><span class="hl-1">.</span><span class="hl-0">createElement</span><span class="hl-1">(</span><span class="hl-2">&#39;output&#39;</span><span class="hl-1">)</span><br/><span class="hl-5">output</span><span class="hl-1">.</span><span class="hl-5">textContent</span><span class="hl-1"> = </span><span class="hl-2">&#39;Loading…&#39;</span><br/><span class="hl-5">document</span><span class="hl-1">.</span><span class="hl-5">body</span><span class="hl-1">.</span><span class="hl-0">append</span><span class="hl-1">(</span><span class="hl-5">output</span><span class="hl-1">)</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">object</span><span class="hl-1"> = (</span><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-5">objectPromise</span><span class="hl-1">) </span><span class="hl-4">as</span><span class="hl-1"> { </span><span class="hl-5">name</span><span class="hl-1">: </span><span class="hl-9">string</span><span class="hl-1"> } | </span><span class="hl-9">undefined</span><br/><span class="hl-4">if</span><span class="hl-1"> (</span><span class="hl-5">object</span><span class="hl-1">) </span><span class="hl-5">output</span><span class="hl-1">.</span><span class="hl-5">textContent</span><span class="hl-1"> = </span><span class="hl-5">object</span><span class="hl-1">.</span><span class="hl-5">name</span>
 </code><button type="button">Copy</button></pre>
 
 <p><code>loadObject</code> reads from the cache first and fetches <code>url</code> on a miss. Successful
-reads refresh the cache in the background. Start the load as early as useful and
-await its promise only when the value is needed. A non-successful HTTP response
-resolves to <code>undefined</code>.</p>
-<p>Pass <code>true</code> as the third argument to avoid network access. A cache miss then
-resolves to <code>undefined</code>:</p>
-<pre><code class="js"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">cachedObject</span><span class="hl-1"> = </span><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-0">loadObject</span><span class="hl-1">(</span><span class="hl-5">url</span><span class="hl-1">, </span><span class="hl-5">cipherKey</span><span class="hl-1">, </span><span class="hl-6">true</span><span class="hl-1">)</span>
+reads refresh cache freshness metadata in the background. Start the load as early
+as useful and await its promise when the value is needed. A non-successful HTTP
+response resolves to <code>undefined</code>. Initial network, cache-read, and decoding errors
+reject the promise; background cache-write failures do not.</p>
+<p>Pass <code>true</code> as the third argument to avoid all network access. A cache miss then
+resolves to <code>undefined</code>, even if a callback was provided:</p>
+<pre><code class="ts"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">cachedObject</span><span class="hl-1"> = </span><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-0">loadObject</span><span class="hl-1">(</span><span class="hl-5">url</span><span class="hl-1">, </span><span class="hl-5">cipherKey</span><span class="hl-1">, </span><span class="hl-6">true</span><span class="hl-1">)</span>
 </code><button type="button">Copy</button></pre>
 
+<h3 id="merge-a-network-replica-in-the-background" class="tsd-anchor-link">Merge a network replica in the background<a href="#merge-a-network-replica-in-the-background" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Pass an optional fourth argument, <code>onNetworkResponse</code>, to fetch a network replica
+after a cache hit. The promise returns the local object first. The background
+fetch starts in a later task, so initialize local state directly after awaiting
+the promise, before doing any further asynchronous work.</p>
+<p>For example, an application using <code>@sovereignbase/sequencer</code> can hydrate a
+<code>Projection</code> from a stored sequence and then merge the network sequence:</p>
+<pre><code class="ts"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">loadObject</span><span class="hl-1">, </span><span class="hl-5">storeObject</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/storage&#39;</span><br/><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">Projection</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/sequencer&#39;</span><br/><br/><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-5">list</span><span class="hl-1">: </span><span class="hl-9">Projection</span><span class="hl-1">&lt;</span><span class="hl-9">string</span><span class="hl-1">&gt;</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">objectPromise</span><span class="hl-1"> = </span><span class="hl-0">loadObject</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-5">url</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">cipherKey</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-6">false</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-5">data</span><span class="hl-1">: </span><span class="hl-9">unknown</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">try</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-3">// Combine the replica with local edits, then persist the merged sequence.</span><br/><span class="hl-1">      </span><span class="hl-4">if</span><span class="hl-1"> (!</span><span class="hl-5">list</span><span class="hl-1">.</span><span class="hl-0">merge</span><span class="hl-1">(</span><span class="hl-5">data</span><span class="hl-1">)) </span><span class="hl-4">throw</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&#39;Invalid network sequence&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">      </span><span class="hl-5">output</span><span class="hl-1">.</span><span class="hl-5">textContent</span><span class="hl-1"> = </span><span class="hl-7">JSON</span><span class="hl-1">.</span><span class="hl-0">stringify</span><span class="hl-1">(</span><span class="hl-5">list</span><span class="hl-1">.</span><span class="hl-0">values</span><span class="hl-1">())</span><br/><span class="hl-1">      </span><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-0">storeObject</span><span class="hl-1">(</span><span class="hl-5">url</span><span class="hl-1">, </span><span class="hl-5">list</span><span class="hl-1">.</span><span class="hl-0">sequence</span><span class="hl-1">(), </span><span class="hl-5">cipherKey</span><span class="hl-1">)</span><br/><span class="hl-1">    } </span><span class="hl-4">catch</span><span class="hl-1"> (</span><span class="hl-5">error</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-5">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">&#39;Could not merge or persist the network sequence&#39;</span><span class="hl-1">, </span><span class="hl-5">error</span><span class="hl-1">)</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">)</span><br/><br/><span class="hl-3">// Build the UI while loading is already in progress.</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">output</span><span class="hl-1"> = </span><span class="hl-5">document</span><span class="hl-1">.</span><span class="hl-0">createElement</span><span class="hl-1">(</span><span class="hl-2">&#39;output&#39;</span><span class="hl-1">)</span><br/><span class="hl-5">output</span><span class="hl-1">.</span><span class="hl-5">textContent</span><span class="hl-1"> = </span><span class="hl-2">&#39;Loading…&#39;</span><br/><span class="hl-5">document</span><span class="hl-1">.</span><span class="hl-5">body</span><span class="hl-1">.</span><span class="hl-0">append</span><span class="hl-1">(</span><span class="hl-5">output</span><span class="hl-1">)</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">data</span><span class="hl-1"> = </span><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-5">objectPromise</span><br/><span class="hl-5">list</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Projection</span><span class="hl-1">&lt;</span><span class="hl-9">string</span><span class="hl-1">&gt;(</span><span class="hl-10">0</span><span class="hl-1">, </span><span class="hl-5">data</span><span class="hl-1">)</span><br/><span class="hl-5">output</span><span class="hl-1">.</span><span class="hl-5">textContent</span><span class="hl-1"> = </span><span class="hl-7">JSON</span><span class="hl-1">.</span><span class="hl-0">stringify</span><span class="hl-1">(</span><span class="hl-5">list</span><span class="hl-1">.</span><span class="hl-0">values</span><span class="hl-1">())</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Use your application's actor ID in place of <code>0</code>. <code>@sovereignbase/sequencer</code> is
+an application dependency, not a dependency of this storage package.</p>
+<table>
+<thead>
+<tr>
+<th>Cache</th>
+<th><code>cacheOnly</code></th>
+<th>Callback provided</th>
+<th>Promise result</th>
+<th>Background network callback</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hit</td>
+<td><code>false</code></td>
+<td>No</td>
+<td>Local object</td>
+<td>None; no network request</td>
+</tr>
+<tr>
+<td>Hit</td>
+<td><code>false</code></td>
+<td>Yes</td>
+<td>Local object</td>
+<td>Once, with a successfully decoded network object</td>
+</tr>
+<tr>
+<td>Miss</td>
+<td><code>false</code></td>
+<td>Either</td>
+<td>Network object, or <code>undefined</code> for an HTTP error</td>
+<td>None; the promise delivers the network result</td>
+</tr>
+<tr>
+<td>Either</td>
+<td><code>true</code></td>
+<td>Either</td>
+<td>Local object, or <code>undefined</code> on a miss</td>
+<td>None; no network request</td>
+</tr>
+</tbody>
+</table>
+<p>The callback receives decrypted, decoded data as <code>unknown</code> and may return a
+promise. It runs for every successful background response, even if the data is
+unchanged. There is one fetch per qualifying load, with no polling or automatic
+retry. Invalid cached data rejects the initial load without starting a background
+fetch.</p>
+<p>The network replica does not automatically replace the cached object or enqueue
+a write: it may lack local edits. The application owns validation, merging, UI
+updates, and persistence. In the example, <code>storeObject</code> caches the merged sequence
+and queues it for upload through the application's write synchronization worker.</p>
+<p>Background HTTP, network, body-reading, and decoding failures skip the callback
+and leave the local data usable. Callback exceptions and rejected callback
+promises are also contained; catch errors inside the callback when the application
+needs to report or retry them. These background failures do not reject the
+already completed <code>loadObject</code> promise.</p>
 <h3 id="delete" class="tsd-anchor-link">Delete<a href="#delete" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <pre><code class="js"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">deleteObject</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@sovereignbase/storage&#39;</span><br/><br/><span class="hl-4">await</span><span class="hl-1"> </span><span class="hl-0">deleteObject</span><span class="hl-1">(</span><span class="hl-5">url</span><span class="hl-1">)</span>
 </code><button type="button">Copy</button></pre>
@@ -75,6 +143,8 @@ MiB are rejected with error code <code>MAX_OBJECT_SIZE_EXCEEDED</code>; malforme
 decrypted padding is rejected with <code>INVALID_PADDING</code>.</li>
 <li>Cache hits take precedence over the network. Successful reads refresh
 <code>Cache-Control</code>, <code>Date</code>, and <code>Expires</code> with a 90-day freshness hint.</li>
+<li>An optional <code>loadObject</code> callback receives a decoded network replica after a
+cache hit. Merging and persisting it are the application's responsibility.</li>
 <li>Cache-only loads never make a network request.</li>
 <li>Remote responses need to allow the browser origin when used cross-origin.</li>
 <li>Write operations are stored in IndexedDB in FIFO order and remain queued until
@@ -117,6 +187,7 @@ mobile Chromium, mobile Firefox emulation, and iPhone 15 mobile WebKit.</li>
 <li><a href="#configure-remote-synchronization"><span>Configure remote synchronization</span></a></li>
 <li><a href="#store"><span>Store</span></a></li>
 <li><a href="#load-and-hydrate"><span>Load and hydrate</span></a></li>
+<li><a href="#merge-a-network-replica-in-the-background"><span>Merge a network replica in the background</span></a></li>
 <li><a href="#delete"><span>Delete</span></a></li>
 <li><a href="#key-management"><span>Key management</span></a></li></ul></li>
 <li><a href="#behavior"><span>Behavior</span></a></li>

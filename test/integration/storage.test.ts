@@ -1,6 +1,7 @@
 import { Cryptographic, type CipherKey } from '@sovereignbase/cryptosuite'
 import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { encodeObject } from '../../src/.helpers/index.js'
 import {
   deleteObject,
   loadObject,
@@ -35,6 +36,25 @@ class MemoryCache {
 
 let cache: MemoryCache
 let fetchMock: ReturnType<typeof vi.fn>
+
+async function networkResponse(
+  object: unknown,
+  cipherKey: CipherKey = key
+): Promise<Response> {
+  return new Response(await encodeObject(object, cipherKey))
+}
+
+// Observe completion of the next background task without changing its timing.
+function backgroundCompletion(): Promise<void> {
+  const completion = Promise.withResolvers<void>()
+  const schedule = globalThis.setTimeout
+  vi.spyOn(globalThis, 'setTimeout').mockImplementationOnce((callback, delay) =>
+    schedule(() => {
+      Promise.resolve(callback()).then(completion.resolve, completion.reject)
+    }, delay)
+  )
+  return completion.promise
+}
 
 async function clearWriteQueue(): Promise<void> {
   let queued = await WriteQueue.dequeue()
@@ -98,6 +118,206 @@ describe('public storage API', () => {
 
     expect(loaded).toEqual(object)
     expect(fetchMock).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(cache.puts).toHaveLength(1))
+  })
+
+  it('keeps cache-first loads without a callback offline', async () => {
+    await storeObject(URL, 'local', key)
+
+    expect(await loadObject(URL, key)).toBe('local')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('hydrates before delivering even an immediately available network object', async () => {
+    const local = { items: ['local edit'] }
+    const remote = { items: ['remote edit'] }
+    await storeObject(URL, local, key)
+    await clearWriteQueue()
+    cache.puts.length = 0
+    fetchMock.mockResolvedValue(await networkResponse(remote))
+    let hydrated: unknown
+    const onNetworkResponse = vi.fn((data: unknown) => {
+      expect(hydrated).toEqual(local)
+      expect(data).toEqual(remote)
+    })
+    const completed = backgroundCompletion()
+
+    hydrated = await loadObject(URL, key, false, onNetworkResponse)
+
+    expect(hydrated).toEqual(local)
+    expect(onNetworkResponse).not.toHaveBeenCalled()
+    await completed
+    expect(onNetworkResponse).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock.mock.calls[0][0].url).toBe(URL)
+    expect(await loadObject(URL, key, true)).toEqual(local)
+    expect(await WriteQueue.size()).toBe(0)
+  })
+
+  it('returns local data while the network is pending and preserves newer local writes', async () => {
+    await storeObject(URL, { items: ['local edit'] }, key)
+    const pending = Promise.withResolvers<Response>()
+    fetchMock.mockReturnValue(pending.promise)
+    const onNetworkResponse = vi.fn()
+    const completed = backgroundCompletion()
+
+    expect(await loadObject(URL, key, false, onNetworkResponse)).toEqual({
+      items: ['local edit'],
+    })
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    expect(onNetworkResponse).not.toHaveBeenCalled()
+
+    await storeObject(URL, { items: ['newer local edit'] }, key)
+    pending.resolve(await networkResponse({ items: ['remote edit'] }))
+    await completed
+
+    expect(onNetworkResponse).toHaveBeenCalledExactlyOnceWith({
+      items: ['remote edit'],
+    })
+    expect(await loadObject(URL, key, true)).toEqual({
+      items: ['newer local edit'],
+    })
+    expect(await WriteQueue.size()).toBe(1)
+  })
+
+  it('allows the callback to merge and persist the resulting local state', async () => {
+    await storeObject(URL, ['local edit'], key)
+    fetchMock.mockResolvedValue(await networkResponse(['remote edit']))
+    let items: string[]
+    const completed = backgroundCompletion()
+
+    items = (await loadObject(URL, key, false, async (data) => {
+      items.push(...(data as string[]))
+      await storeObject(URL, items, key)
+    })) as string[]
+    await completed
+
+    expect(await loadObject(URL, key, true)).toEqual([
+      'local edit',
+      'remote edit',
+    ])
+    expect(await WriteQueue.size()).toBe(1)
+  })
+
+  it.each([true, false])(
+    'never fetches or calls the callback for cache-only loads (hit: %s)',
+    async (hit) => {
+      if (hit) await storeObject(URL, 'local', key)
+      const onNetworkResponse = vi.fn()
+
+      expect(await loadObject(URL, key, true, onNetworkResponse)).toBe(
+        hit ? 'local' : undefined
+      )
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(onNetworkResponse).not.toHaveBeenCalled()
+    }
+  )
+
+  it('returns a cache miss through the promise without also calling the callback', async () => {
+    fetchMock.mockResolvedValue(await networkResponse('remote'))
+    const onNetworkResponse = vi.fn()
+
+    expect(await loadObject(URL, key, false, onNetworkResponse)).toBe('remote')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(onNetworkResponse).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(cache.puts).toHaveLength(1))
+    expect(await loadObject(URL, key, true)).toBe('remote')
+  })
+
+  it.each(['http', 'offline', 'invalid body', 'wrong key', 'unreadable body'])(
+    'keeps local data when the background response fails: %s',
+    async (failure) => {
+      await storeObject(URL, 'local', key)
+      if (failure === 'offline') {
+        fetchMock.mockRejectedValue(new TypeError('Network unavailable'))
+      } else if (failure === 'http') {
+        fetchMock.mockResolvedValue(new Response(null, { status: 503 }))
+      } else if (failure === 'invalid body') {
+        fetchMock.mockResolvedValue(new Response('not an encrypted object'))
+      } else if (failure === 'wrong key') {
+        fetchMock.mockResolvedValue(
+          await networkResponse(
+            'remote',
+            await Cryptographic.cipherMessage.generateKey()
+          )
+        )
+      } else {
+        const response = await networkResponse('remote')
+        vi.spyOn(response, 'arrayBuffer').mockRejectedValue(
+          new Error('Read failed')
+        )
+        fetchMock.mockResolvedValue(response)
+      }
+      const onNetworkResponse = vi.fn()
+      const completed = backgroundCompletion()
+
+      expect(await loadObject(URL, key, false, onNetworkResponse)).toBe('local')
+      await completed
+
+      expect(fetchMock).toHaveBeenCalledOnce()
+      expect(onNetworkResponse).not.toHaveBeenCalled()
+      expect(await loadObject(URL, key, true)).toBe('local')
+    }
+  )
+
+  it.each([false, true])(
+    'contains callback failures without changing local data (async: %s)',
+    async (asyncCallback) => {
+      await storeObject(URL, 'local', key)
+      fetchMock.mockResolvedValue(await networkResponse('remote'))
+      const failure = new Error('Merge failed')
+      const onNetworkResponse = vi.fn(
+        asyncCallback
+          ? async () => {
+              throw failure
+            }
+          : () => {
+              throw failure
+            }
+      )
+      const completed = backgroundCompletion()
+
+      expect(await loadObject(URL, key, false, onNetworkResponse)).toBe('local')
+      await completed
+
+      expect(onNetworkResponse).toHaveBeenCalledExactlyOnceWith('remote')
+      expect(await loadObject(URL, key, true)).toBe('local')
+    }
+  )
+
+  it('hydrates and fetches even when the background cache metadata write fails', async () => {
+    await storeObject(URL, 'local', key)
+    vi.spyOn(cache, 'put').mockRejectedValue(new Error('Cache quota exceeded'))
+    fetchMock.mockResolvedValue(await networkResponse('remote'))
+    const onNetworkResponse = vi.fn()
+    const completed = backgroundCompletion()
+
+    expect(await loadObject(URL, key, false, onNetworkResponse)).toBe('local')
+    await completed
+
+    expect(onNetworkResponse).toHaveBeenCalledExactlyOnceWith('remote')
+  })
+
+  it('rejects a cache-miss network failure through the returned promise', async () => {
+    const failure = new TypeError('Network unavailable')
+    fetchMock.mockRejectedValue(failure)
+    const onNetworkResponse = vi.fn()
+
+    await expect(loadObject(URL, key, false, onNetworkResponse)).rejects.toBe(
+      failure
+    )
+    expect(onNetworkResponse).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid cached data without scheduling a network callback', async () => {
+    cache.entries.set(URL, new Response('invalid encrypted object'))
+    const onNetworkResponse = vi.fn()
+
+    await expect(
+      loadObject(URL, key, false, onNetworkResponse)
+    ).rejects.toBeInstanceOf(Error)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(onNetworkResponse).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(cache.puts).toHaveLength(1))
   })
 

@@ -82,7 +82,7 @@ consumer obtains the already encrypted bytes from the Cache API.
 
 ### Store
 
-```js
+```ts
 import { storeObject } from '@sovereignbase/storage'
 import { Cryptographic } from '@sovereignbase/cryptosuite'
 
@@ -97,7 +97,7 @@ queue operation have both been written.
 
 ### Load and hydrate
 
-```js
+```ts
 import { loadObject } from '@sovereignbase/storage'
 
 const objectPromise = loadObject(url, cipherKey)
@@ -107,21 +107,90 @@ const output = document.createElement('output')
 output.textContent = 'Loading…'
 document.body.append(output)
 
-const object = await objectPromise
+const object = (await objectPromise) as { name: string } | undefined
 if (object) output.textContent = object.name
 ```
 
 `loadObject` reads from the cache first and fetches `url` on a miss. Successful
-reads refresh the cache in the background. Start the load as early as useful and
-await its promise only when the value is needed. A non-successful HTTP response
-resolves to `undefined`.
+reads refresh cache freshness metadata in the background. Start the load as early
+as useful and await its promise when the value is needed. A non-successful HTTP
+response resolves to `undefined`. Initial network, cache-read, and decoding errors
+reject the promise; background cache-write failures do not.
 
-Pass `true` as the third argument to avoid network access. A cache miss then
-resolves to `undefined`:
+Pass `true` as the third argument to avoid all network access. A cache miss then
+resolves to `undefined`, even if a callback was provided:
 
-```js
+```ts
 const cachedObject = await loadObject(url, cipherKey, true)
 ```
+
+### Merge a network replica in the background
+
+Pass an optional fourth argument, `onNetworkResponse`, to fetch a network replica
+after a cache hit. The promise returns the local object first. The background
+fetch starts in a later task, so initialize local state directly after awaiting
+the promise, before doing any further asynchronous work.
+
+For example, an application using `@sovereignbase/sequencer` can hydrate a
+`Projection` from a stored sequence and then merge the network sequence:
+
+```ts
+import { loadObject, storeObject } from '@sovereignbase/storage'
+import { Projection } from '@sovereignbase/sequencer'
+
+let list: Projection<string>
+const objectPromise = loadObject(
+  url,
+  cipherKey,
+  false,
+  async (data: unknown) => {
+    try {
+      // Combine the replica with local edits, then persist the merged sequence.
+      if (!list.merge(data)) throw new Error('Invalid network sequence')
+      output.textContent = JSON.stringify(list.values())
+      await storeObject(url, list.sequence(), cipherKey)
+    } catch (error) {
+      console.error('Could not merge or persist the network sequence', error)
+    }
+  }
+)
+
+// Build the UI while loading is already in progress.
+const output = document.createElement('output')
+output.textContent = 'Loading…'
+document.body.append(output)
+
+const data = await objectPromise
+list = new Projection<string>(0, data)
+output.textContent = JSON.stringify(list.values())
+```
+
+Use your application's actor ID in place of `0`. `@sovereignbase/sequencer` is
+an application dependency, not a dependency of this storage package.
+
+| Cache  | `cacheOnly` | Callback provided | Promise result                                   | Background network callback                      |
+| ------ | ----------- | ----------------- | ------------------------------------------------ | ------------------------------------------------ |
+| Hit    | `false`     | No                | Local object                                     | None; no network request                         |
+| Hit    | `false`     | Yes               | Local object                                     | Once, with a successfully decoded network object |
+| Miss   | `false`     | Either            | Network object, or `undefined` for an HTTP error | None; the promise delivers the network result    |
+| Either | `true`      | Either            | Local object, or `undefined` on a miss           | None; no network request                         |
+
+The callback receives decrypted, decoded data as `unknown` and may return a
+promise. It runs for every successful background response, even if the data is
+unchanged. There is one fetch per qualifying load, with no polling or automatic
+retry. Invalid cached data rejects the initial load without starting a background
+fetch.
+
+The network replica does not automatically replace the cached object or enqueue
+a write: it may lack local edits. The application owns validation, merging, UI
+updates, and persistence. In the example, `storeObject` caches the merged sequence
+and queues it for upload through the application's write synchronization worker.
+
+Background HTTP, network, body-reading, and decoding failures skip the callback
+and leave the local data usable. Callback exceptions and rejected callback
+promises are also contained; catch errors inside the callback when the application
+needs to report or retry them. These background failures do not reject the
+already completed `loadObject` promise.
 
 ### Delete
 
@@ -154,6 +223,8 @@ same key that was used for storage. Generate a random key with
   decrypted padding is rejected with `INVALID_PADDING`.
 - Cache hits take precedence over the network. Successful reads refresh
   `Cache-Control`, `Date`, and `Expires` with a 90-day freshness hint.
+- An optional `loadObject` callback receives a decoded network replica after a
+  cache hit. Merging and persisting it are the application's responsibility.
 - Cache-only loads never make a network request.
 - Remote responses need to allow the browser origin when used cross-origin.
 - Write operations are stored in IndexedDB in FIFO order and remain queued until
